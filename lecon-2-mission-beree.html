@@ -71,6 +71,19 @@ button{ font:inherit; color:inherit }
 .tog{ min-height:48px; padding:0 14px; border-radius:12px; border:1px solid var(--line); background:var(--bg);
   font-size:15px; font-weight:600; color:var(--muted); cursor:pointer }
 hr.sep{ border:0; border-top:1px solid var(--line); margin:14px 0 }
+/* lecture par l'enfant (dyslexie légère) : sans empattement, grand, interligne ~1,5-1,6, léger espacement,
+   aligné à gauche, jamais justifié, sans italique ; encre #1F2A33 sur fond #F6F8FA (ni noir pur, ni blanc pur) */
+.pres{ background:#F6F8FA; text-align:left; font-style:normal }
+.pres p, .pres li, .pres textarea, .pres input{ letter-spacing:.02em; word-spacing:.08em; text-align:left; hyphens:none }
+.dire{ font-size:20px; line-height:1.5; max-width:62ch }
+.q{ font-size:24px; line-height:1.45; margin:4px 0 8px }
+.lead{ font-size:18px; line-height:1.5; color:#36485A }
+.vref{ font-size:24px; line-height:1.4 }
+.vtext{ font-size:22px; line-height:1.6; max-width:60ch }
+.indice-btn{ min-height:48px; padding:0 16px; border-radius:12px; border:1px dashed #3C7D37; background:#EAF6E6; color:#2C5E28;
+  font-size:16px; font-weight:700; cursor:pointer; margin:2px 0 14px }
+.indice{ font-size:18px; line-height:1.5; color:#2C5E28; font-weight:600; background:#EAF6E6; border-radius:10px; padding:8px 12px; margin:2px 0 14px }
+.q + .q, .q + .relance-vide{ margin-top:10px }
 
 /* tour du détective */
 .tour textarea{ width:100%; min-height:84px; border-radius:12px; border:1px solid #AEB7BF; padding:12px; font:inherit;
@@ -443,7 +456,12 @@ const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 const use = (id, extra='') => `<use href="#${id}" width="64" height="64" ${extra}/>`;
 const verset = (ref, txt, lead) => `<div class="vbloc">${lead?`<p class="lead">${lead}</p>`:''}<p class="vref">${esc(ref)}</p>
   <button class="tog" data-tog>Masquer le texte</button><p class="vtext">${esc(txt)}</p></div>`;
-const question = q => `<p class="q">« ${esc(q)} »</p>`;
+/* l'indice n'existe que là où la trame de l'instructeur fournit la phrase ; aucun indice n'est inventé */
+const question = (q, indice='') => `<p class="q">« ${esc(q)} »</p>${indice ? `<button class="indice-btn" data-indice>Un indice ?</button>
+  <p class="indice" hidden>Indice : ${esc(indice)}</p>` : ''}`;
+function brancherIndices(root=document){
+  root.querySelectorAll('[data-indice]').forEach(b => b.onclick = () => { b.nextElementSibling.hidden = false; b.hidden = true });
+}
 const picCarte = c => c.fam==='pers' ? use(c.pic)+use('ban') : use('halo')+use(c.pic);
 
 function aller(ecran){ S.ecran = ecran; save(); render(); window.scrollTo(0,0) }
@@ -470,8 +488,9 @@ function rAccueil(){
     <p class="titre-enfant" id="titreBadge" ${S.badge?'':'hidden'}>Détective de Bérée</p>
     <button class="big" id="suite" ${S.badge?'':'hidden'}><svg viewBox="0 0 64 64">${use('i-pas')}</svg>Suite</button>
     <div class="pres" style="text-align:left;width:100%">
-      <p class="tag">${LIRE}</p>
-      <p class="dire">« Aujourd'hui, tu es détective. Il y a 5 cases. Quand ton pion arrive au bout, on a fini. »</p>
+      <p class="tag">Ta mission</p>
+      <p class="dire">Aujourd'hui, tu es détective.</p>
+      <p class="dire">Il y a 5 cases. Quand ton pion arrive au bout, tu as fini.</p>
     </div></section>`;
   document.getElementById('badge').onclick = () => {
     if (S.badge) return;
@@ -502,12 +521,13 @@ function rSecret(){
     <div class="pres" style="text-align:left;width:100%">
       <p class="tag">${QUESTION}</p>
       ${question("Tu peux effacer une chose du monde pour toujours. Laquelle ?")}
-      <p class="dire">On l'écrit ici, et l'enveloppe se ferme. On l'ouvrira dans le coffre.</p>
+      <p class="dire">Écris-la ici, puis ferme l'enveloppe.</p>
+      <p class="dire">Tu l'ouvriras dans le coffre.</p>
       <div id="saisie" ${S.scelle?'hidden':''}>
         <input class="champ" id="champSecret" type="text" autocomplete="off" placeholder="La chose à faire disparaître" value="${esc(S.secret)}">
         <div class="row" style="margin-top:12px"><button class="btn" id="fermer">Fermer l'enveloppe</button></div>
       </div>
-      <p class="dire" id="scelleOk" ${S.scelle?'':'hidden'}>L'enveloppe est fermée. Elle s'ouvrira à la case 3.</p>
+      <p class="dire" id="scelleOk" ${S.scelle?'':'hidden'}>L'enveloppe est fermée. Tu l'ouvriras à la case 3.</p>
     </div>
     <button class="big" id="versPlateau" ${S.scelle?'':'hidden'}><svg viewBox="0 0 64 64">${use('i-pas')}</svg>Le plateau</button>
   </section>`;
@@ -596,10 +616,10 @@ function avancer(){
 /* ----- tour du détective ----- */
 function tour(n){
   const mes = S.boite.filter(x=>x.c===n);
-  return `<div class="pres tour"><p class="tag">Tour du détective</p>
-    <p class="dire">À toi de poser une question, n'importe laquelle. On y répond, ou on la range dans la boîte à enquêtes.</p>
-    <textarea id="tq" placeholder="La question du détective"></textarea>
-    <div class="row" style="margin-top:10px"><button class="btn" id="ranger">Ranger dans la boîte à enquêtes</button></div>
+  return `<div class="pres tour"><p class="tag">Ta boîte à enquêtes</p>
+    <p class="dire">Une question te vient ? Note ta question dans ta boîte à enquêtes.</p>
+    <textarea id="tq" placeholder="Ta question"></textarea>
+    <div class="row" style="margin-top:10px"><button class="btn" id="ranger">Ranger dans ma boîte</button></div>
     <ul id="tl">${mes.map(x=>`<li>${esc(x.q)}</li>`).join('')}</ul></div>`;
 }
 function brancherTour(n){
@@ -617,6 +637,7 @@ function brancherFin(n){
   document.getElementById('retour').onclick = () => { if(!S.faites.includes(n)) S.faites.push(n); aller('plateau') };
   document.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => {
     const p = b.nextElementSibling; p.hidden = !p.hidden; b.textContent = p.hidden ? 'Afficher le texte' : 'Masquer le texte' });
+  brancherIndices();
 }
 function enfant(n){
   return `<div class="enfant"><div class="disque" style="background:${CASES[n].fond}">
@@ -627,28 +648,29 @@ function enfant(n){
 function rCase(n){
   let corps = '';
   if (n===1) corps = `
-    ${verset(V.jr.ref, V.jr.txt)}
-    ${question("Quelle bonne nouvelle la Bible nous donne pour plus tard ?")}
+    ${verset(V.jr.ref, V.jr.txt, "Lis Jérémie 29:11, 12.")}
+    ${question("Quelle bonne nouvelle la Bible nous donne pour plus tard ?", "L'espoir, c'est attendre quelque chose de bien, en sachant que ça va venir.")}
     <hr class="sep">
-    ${verset(V.re.ref, V.re.txt)}
+    ${verset(V.re.ref, V.re.txt, "Lis Révélation 21:4.")}
     ${question("D'après la Bible, comment sera la vie un jour ?")}`;
   if (n===2) corps = `
-    <p class="dire">À Bérée, les gens écoutaient, puis vérifiaient chaque jour dans les Écritures. Ce sont les premiers détectives de la Bible. C'est pour ça que tu as ce badge.</p>
-    ${verset(V.ac.ref, V.ac.txt)}
-    ${question("Comment être sûr que ces promesses vont vraiment arriver ?")}`;
+    <p class="dire">À Bérée, les gens écoutaient, puis vérifiaient chaque jour dans les Écritures.</p>
+    <p class="dire">Ce sont les premiers détectives de la Bible. C'est pour ça que tu as ce badge.</p>
+    ${verset(V.ac.ref, V.ac.txt, "Lis Actes 17:11.")}
+    ${question("Comment être sûr que ces promesses vont vraiment arriver ?", "À Bérée, les gens vérifiaient chaque jour dans les Écritures.")}`;
   if (n===4) corps = `
     <div class="row" style="gap:14px;align-items:center;margin-bottom:10px">
       <svg viewBox="0 0 64 64" style="width:64px;height:64px;flex:none">${use('i-ecran')}</svg>
-      <p class="vref" style="margin:0;flex:1 1 220px;font-size:23px">Regarder la vidéo « Je voulais combattre l'injustice » dans JW Library, son bas</p></div>
+      <p class="vref" style="margin:0;flex:1 1 220px;font-size:22px">Regarde la vidéo « Je voulais combattre l'injustice » dans JW Library, son bas.</p></div>
     <p class="lead">Après la vidéo :</p>
     ${question("Qu'est-ce qui n'était pas juste, et faisait mal à Rafika ?")}
     ${question("Le problème est toujours là. Comment la Bible a aidé Rafika ?")}
     <hr class="sep">
-    ${verset(V.rm.ref, V.rm.txt)}
+    ${verset(V.rm.ref, V.rm.txt, "Lis Romains 12:12.")}
     ${question("Cet espoir peut t'aider dès aujourd'hui ? Pourquoi ?")}`;
   const phrase = n===4 ? "Dernière case." : '';
   app.innerHTML = `<section class="screen case">${enfant(n)}
-    <div><div class="pres"><p class="tag">${LIRE} · case ${n}</p>${corps}</div>${tour(n)}${finCase(n, phrase)}</div></section>`;
+    <div><div class="pres"><p class="tag">Case ${n}</p>${corps}</div>${tour(n)}${finCase(n, phrase)}</div></section>`;
   brancherTour(n); brancherFin(n);
 }
 
@@ -660,8 +682,9 @@ function carteHTML(c, ouverte, extra=''){
 }
 function rCoffre(){
   app.innerHTML = `<section class="screen coffre">
-    <div class="pres"><p class="tag">${LIRE} · case 3, le coffre</p>
-      <p class="dire" style="margin:0">« Dans ce coffre, il y a des promesses de Jéhovah. Tu en retournes trois. »</p></div>
+    <div class="pres"><p class="tag">Case 3 · Le coffre</p>
+      <p class="dire">Dans ce coffre, il y a des promesses de Jéhovah.</p>
+      <p class="dire" style="margin:0">Touche une carte pour la retourner. Tu en retournes trois.</p></div>
     <div class="cartes" id="cartes">${S.ordre.map(id=>carteHTML(carte(id), S.ouvertes.includes(id) || S.toutes)).join('')}</div>
     <div class="focus" id="focus"></div>
     <div id="suiteCoffre"></div>
@@ -686,12 +709,13 @@ function majFocus(){
   const c = carte(S.focus);
   f.innerHTML = `<div class="grande ${c.fam}"><div class="cat">${c.fam==='pers'?'PERSONNE…':'TOUT LE MONDE…'}</div>
       <svg viewBox="0 0 64 64">${picCarte(c)}</svg><p class="ph">${esc(c.ph)}</p></div>
-    <div class="pres"><p class="tag">${LIRE} · la promesse, puis le verset</p>
-      ${c.v.map(([r,t])=>verset(r,t)).join('')}
-      <p class="lead">Une des deux questions :</p>
+    <div class="pres"><p class="tag">Lis la promesse, puis le verset</p>
+      ${c.v.map(([r,t])=>verset(r,t, "Lis " + r + ".")).join('')}
+      <p class="lead">Réponds à une des deux questions :</p>
       ${question("Ce verset te promet quoi de bien ?")}${question("Qui, autour de toi, serait content d'entendre ça ?")}
     </div>`;
   f.querySelectorAll('[data-tog]').forEach(b => b.onclick = () => { const p=b.nextElementSibling; p.hidden=!p.hidden; b.textContent=p.hidden?'Afficher le texte':'Masquer le texte' });
+  brancherIndices(f);
 }
 function majSuite(){
   const s = document.getElementById('suiteCoffre'), n = S.ouvertes.length;
@@ -704,18 +728,18 @@ function majSuite(){
   } else {
     h += `<div class="pres" style="margin-top:14px"><p class="tag">LE SECRET</p>
       <div class="secret-ouvert">${esc(S.secret || '(rien d\'écrit)')}</div>
-      ${question("Ta chose est sur la liste de Jéhovah ?")}
-      ${!S.toutes ? `<button class="btn" id="toutes">Retourner les autres cartes</button>` : `
+      ${question("Ta chose est sur la liste de Jéhovah ?", "Regarde les cartes : maladie, guerre, injustice, mort…")}
+      ${!S.toutes ? `<button class="btn" id="toutes">Retourne les autres cartes</button>` : `
         <div class="row">
           <button class="btn" id="yEst" ${S.verdict==='oui'?'style="background:#DCEDD6"':''}>Elle y est</button>
-          <button class="btn" id="pasLa" ${S.verdict==='boite'?'style="background:#DCEDD6"':''}>Elle va dans la boîte à enquêtes</button>
+          <button class="btn" id="pasLa" ${S.verdict==='boite'?'style="background:#DCEDD6"':''}>Elle va dans ma boîte à enquêtes</button>
         </div>`}
     </div>`;
     if (S.toutes && S.verdict){
       h += `${tour(3)}${finCase(3, "Encore deux cases, puis l'arrivée.")}`;
     }
   }
-  s.innerHTML = h;
+  s.innerHTML = h; brancherIndices(s);
   const o = document.getElementById('ouvrirSecret');
   if (o) o.onclick = () => { S.secretOuvert = true; save(); majSuite() };
   const t = document.getElementById('toutes');
@@ -769,7 +793,7 @@ function rArrivee(){
       </g>
     </svg>
     <p class="titre-enfant" style="text-align:center">Le monde de demain</p>
-    <div class="pres"><p class="tag">${QUESTION} · le rapport du détective</p>
+    <div class="pres"><p class="tag">Le rapport du détective</p>
       ${question("D'après la Bible, comment sera le monde demain ?")}</div>
     ${choix.length ? `<div class="pres"><p class="tag">Ta carte préférée</p>
       <div class="favs" id="favs">${choix.map(id=>carteHTML(carte(id), true, '')).join('')}</div>
@@ -781,16 +805,16 @@ function rArrivee(){
           <p class="m3">« Prochaine enquête : peut-on faire confiance à la Bible ? Ta question d'ici là : comment on vérifie qu'un livre très ancien dit vrai ? »</p></div>
         <div class="touche" id="m3hint" ${S.m3?'hidden':''}><svg viewBox="0 0 64 64">${use('i-main')}</svg>Touche l'enveloppe</div>
       </div></div>
-    <div class="pres"><p class="tag">Boîte à enquêtes · à relire</p>
-      ${S.boite.length ? `<ul style="margin:0;padding-left:20px;font-size:19px;line-height:1.45">${S.boite.map(x=>`<li><b>Case ${x.c}</b> · ${esc(x.q)}</li>`).join('')}</ul>` : '<p class="dire" style="margin:0">Aucune question rangée.</p>'}
-      <textarea id="tq" placeholder="Ajouter une question" style="width:100%;min-height:70px;margin-top:12px;border-radius:12px;border:1px solid #AEB7BF;padding:12px;font:inherit;font-size:19px"></textarea>
-      <div class="row" style="margin-top:10px"><button class="btn" id="ranger">Ranger dans la boîte à enquêtes</button></div>
+    <div class="pres"><p class="tag">Ta boîte à enquêtes</p>
+      ${S.boite.length ? `<ul style="margin:0;padding-left:20px;font-size:19px;line-height:1.5">${S.boite.map(x=>`<li><b>Case ${x.c}</b> · ${esc(x.q)}</li>`).join('')}</ul>` : '<p class="dire" style="margin:0">Ta boîte est vide pour l\'instant.</p>'}
+      <textarea id="tq" placeholder="Ajoute une question" style="width:100%;min-height:70px;margin-top:12px;border-radius:12px;border:1px solid #AEB7BF;padding:12px;font:inherit;font-size:19px"></textarea>
+      <div class="row" style="margin-top:10px"><button class="btn" id="ranger">Ranger dans ma boîte</button></div>
       <ul id="tl" style="margin:8px 0 0;padding-left:20px;font-size:17px"></ul>
     </div>
     <div class="fin" style="justify-content:center"><button class="btn soft" id="retour">Revoir le plateau</button></div>
   </section>`;
   if (!S.faites.includes(5)){ S.faites.push(5); save() }
-  brancherTour(5);
+  brancherTour(5); brancherIndices();
   document.getElementById('retour').onclick = () => aller('plateau');
   const majFav = () => { document.querySelectorAll('#favs .carte').forEach(b=>b.classList.toggle('choisie', b.dataset.id===S.fav));
     const r = document.getElementById('favRef'); if (r) r.textContent = S.fav ? carte(S.fav).ref : 'Touche ta carte préférée' };
