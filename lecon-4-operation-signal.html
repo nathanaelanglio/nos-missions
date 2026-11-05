@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Opération SIGNAL</title>
+
+
+<!--
+  Opération SIGNAL, leçon 04 — version famille, à rejouer à la maison.
+  Une seule chose à lire par écran. Aucune vibration, aucun clignotement, aucun compte à rebours. Tout mouvement
+  s'arrête si l'appareil demande « moins de mouvement ». Son : module de Milo (sons.js), inclus tel quel.
+  Aucune ressource externe, aucune image extérieure. L'état est gardé dans le navigateur ; « Recommencer » l'efface.
+-->
+
+<style>
+:root{
+  color-scheme: light;
+  --bg:#E8EEF8; --bg2:#D9E2F2; --panneau:#F7F9FD; --panneau-b:#C6D0E4; --line:#AEBBD6;
+  --txt:#1B2340; --txt2:#43517A; --glace-t:#1D6496; --or-t:#7A570B; --violet-t:#5A44AE; --vert-t:#1C6E52;
+  --route:#C6D0E6; --off:#DCE3F0; --offl:#7F8DAE;
+  --etoile-fond:rgba(52,64,120,.38); --neb1:rgba(140,120,220,.20); --neb2:rgba(80,170,215,.18);
+  --planete1:#CBD7F1; --planete2:#A3B5DE; --anneau:rgba(70,90,150,.28);
+  --creme:#FFF8E8; --encre:#1B2340; --creme-b:#E3D3AE; --ref:#6A5420;
+  --titre-f: ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --lire-f: Verdana, 'Atkinson Hyperlegible', Tahoma, 'Segoe UI', system-ui, sans-serif;
+}
+/* thème sombre, au choix : bleu nuit profond, jamais noir pur */
+html[data-theme="sombre"]{
+  color-scheme: dark;
+  --bg:#131B33; --bg2:#1A2444; --panneau:#212C50; --panneau-b:#36446F; --line:#43528A;
+  --txt:#EEF2FB; --txt2:#B7C3DE; --glace-t:#8FD0F2; --or-t:#F2CE78; --violet-t:#BDAEF7; --vert-t:#86DDBD;
+  --route:#27335B; --off:#26315A; --offl:#6170A0;
+  --etoile-fond:rgba(232,238,255,.62); --neb1:rgba(150,120,240,.16); --neb2:rgba(80,170,220,.13);
+  --planete1:#2E3D70; --planete2:#1E2852; --anneau:rgba(150,180,240,.25);
+}
+*{ box-sizing:border-box }
+html,body{ margin:0; color:var(--txt); font-family:var(--lire-f); -webkit-tap-highlight-color:transparent }
+html{ background:var(--bg) }
+body{ min-height:100dvh; background:linear-gradient(180deg, var(--bg), var(--bg2));
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom:env(safe-area-inset-bottom, 0px) }
+button{ font:inherit; color:inherit }
+[hidden]{ display:none !important }
+
+/* ---------- décor : une station en orbite, vivante mais lente ---------- */
+.decor{ position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden }
+.decor .neb{ position:absolute; border-radius:50%; filter:blur(40px); animation:respire 18s ease-in-out infinite alternate }
+.decor .n1{ width:70vmax; height:50vmax; left:-20vmax; top:-18vmax; background:radial-gradient(closest-side, var(--neb1), transparent) }
+.decor .n2{ width:60vmax; height:44vmax; right:-22vmax; top:30vh; background:radial-gradient(closest-side, var(--neb2), transparent); animation-duration:23s; animation-delay:-8s }
+.decor .champ{ position:absolute; inset:-6%; width:112%; height:112% }
+.decor .c1{ animation:derive 150s ease-in-out infinite alternate }
+.decor .c2{ animation:derive2 210s ease-in-out infinite alternate }
+.decor .champ circle{ fill:var(--etoile-fond) }
+.decor .planete{ position:absolute; width:58vmin; height:58vmin; right:-20vmin; bottom:-26vmin; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--planete1), var(--planete2) 70%); opacity:.85 }
+.decor .anneau{ position:absolute; left:-24%; right:-24%; top:42%; height:16%; border-radius:50%; border:2px solid var(--anneau); transform:rotate(-14deg) }
+.decor .orbite{ position:absolute; width:86vmin; height:86vmin; right:-34vmin; bottom:-40vmin; animation:tourne 120s linear infinite }
+.decor .sat{ position:absolute; left:50%; top:0; width:7px; height:7px; margin-left:-3px; border-radius:50%; background:var(--glace-t); opacity:.55 }
+@keyframes respire{ from{ opacity:.55 } to{ opacity:1 } }
+@keyframes derive{ from{ transform:translate(0,0) } to{ transform:translate(-2.5%, 1.5%) } }
+@keyframes derive2{ from{ transform:translate(0,0) } to{ transform:translate(2%, -2%) } }
+@keyframes tourne{ to{ transform:rotate(360deg) } }
+
+/* ---------- barre du haut ---------- */
+.top{ position:relative; z-index:2; display:flex; align-items:center; gap:10px; height:64px; margin-top:env(safe-area-inset-top, 0px) }
+.top .mini{ display:flex; align-items:center; gap:8px; opacity:0; transition:opacity 1s ease; min-width:0; flex:1 }
+.top .mini.on{ opacity:1 }
+.top .mini svg{ width:40px; height:40px; flex:none }
+.top .mini span{ font-family:var(--titre-f); font-size:16px; font-weight:700; color:var(--glace-t); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.top .nom{ font-family:var(--titre-f); font-size:17px; font-weight:700; letter-spacing:.06em; color:var(--txt2); white-space:nowrap; padding-right:4px }
+.top .reset{ min-height:48px; padding:0 14px; border:1px solid var(--line); background:var(--panneau); border-radius:12px; font-size:15px; font-weight:700; color:var(--txt2); cursor:pointer }
+@media (max-width:480px){ .top .nom{ display:none } .top .reset{ padding:0 10px; font-size:14px } }
+.slot-hp{ display:inline-flex; align-items:center; flex:none; gap:2px }
+.hp{ width:48px; height:48px; border:0; background:transparent; color:var(--txt2); border-radius:12px; display:grid; place-items:center; cursor:pointer; padding:0 }
+.hp svg{ width:28px; height:28px }
+.confirm{ position:fixed; left:0; right:0; top:0; z-index:30; background:var(--panneau); color:var(--txt); border-bottom:1px solid var(--panneau-b);
+  padding:calc(14px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px));
+  display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:19px; box-shadow:0 8px 30px rgba(10,20,50,.2) }
+.confirm span{ flex:1 1 220px }
+
+/* ---------- mouvement : doux, une seconde au plus, rien qui clignote ---------- */
+#app{ position:relative; z-index:1 }
+.screen{ animation:entree .6s cubic-bezier(.2,.8,.2,1) both }
+@keyframes entree{ from{ opacity:0; transform:scale(.985) } to{ opacity:1; transform:none } }
+@keyframes fondu{ from{ opacity:0 } to{ opacity:1 } }
+.halo-t{ position:absolute; border-radius:50%; pointer-events:none; width:16px; height:16px; margin:-8px 0 0 -8px;
+  background:radial-gradient(circle, rgba(255,255,255,.55), rgba(143,208,242,.28) 60%, transparent 70%); animation:halo .7s ease-out forwards; z-index:3 }
+@keyframes halo{ from{ transform:scale(1); opacity:1 } to{ transform:scale(9); opacity:0 } }
+.rebond{ animation:rebond .45s cubic-bezier(.3,1.6,.5,1) }
+@keyframes rebond{ 0%{ transform:scale(1) } 40%{ transform:scale(.95) } 100%{ transform:scale(1) } }
+.brille{ position:relative; overflow:hidden }
+.brille::after{ content:""; position:absolute; top:-20%; bottom:-20%; left:-60%; width:45%; transform:skewX(-20deg);
+  background:linear-gradient(90deg, transparent, rgba(255,246,200,.7), transparent); animation:balaye 1s ease-out forwards; pointer-events:none }
+@keyframes balaye{ from{ left:-60% } to{ left:120% } }
+.particule{ position:absolute; width:8px; height:8px; border-radius:50%; pointer-events:none; z-index:40;
+  background:radial-gradient(circle, #FFF6C8, #FFD25E 60%, rgba(255,210,94,0) 70%); animation:monte 2.2s ease-out forwards }
+.particule.verte{ background:radial-gradient(circle, #E6FFF4, #7FD9B8 60%, rgba(127,217,184,0) 70%) }
+@keyframes monte{ 0%{ opacity:0; transform:translate(0,0) scale(.6) } 15%{ opacity:1 } 100%{ opacity:0; transform:translate(var(--dx), var(--dy)) scale(1.1) } }
+
+/* ---------- boutons ---------- */
+.big{ display:inline-flex; align-items:center; justify-content:center; gap:12px; min-height:76px; min-width:76px; padding:0 30px;
+  border-radius:20px; border:2px solid #8FD0F2; background:linear-gradient(180deg,#22679A,#174B70); color:#FFFFFF;
+  font-family:var(--titre-f); font-size:24px; font-weight:700; letter-spacing:.03em; cursor:pointer;
+  box-shadow:0 0 0 5px rgba(143,208,242,.18), 0 8px 22px rgba(10,25,60,.25); transition:transform .3s ease }
+.big:active{ transform:translateY(2px) }
+.big svg{ width:34px; height:34px; flex:none }
+.big.or{ border-color:#FFD98A; background:linear-gradient(180deg,#94690F,#6E4E0B); box-shadow:0 0 0 5px rgba(255,210,94,.22), 0 8px 22px rgba(10,25,60,.25) }
+.big.violet{ border-color:#C9BAFF; background:linear-gradient(180deg,#5D47B5,#45338C); box-shadow:0 0 0 5px rgba(189,174,247,.22), 0 8px 22px rgba(10,25,60,.25) }
+.big[disabled]{ opacity:.45 }
+.btn{ min-height:58px; padding:0 20px; border-radius:16px; border:2px solid var(--line); background:var(--panneau); color:var(--txt);
+  font-family:var(--lire-f); font-size:18px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px }
+.btn svg{ width:24px; height:24px; flex:none }
+.btn.on{ border-color:#3FAF86; background:#E4F6EE; color:#164F3B }
+.btn.leger{ border-color:transparent; background:transparent; color:var(--txt2); font-weight:700 }
+.row{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:center }
+
+/* ---------- une scène = une chose à lire ---------- */
+.scene{ min-height:calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  display:flex; flex-direction:column; align-items:center; gap:22px; padding:6px 0 28px }
+.scene .haut{ display:flex; flex-direction:column; align-items:center; gap:10px; width:100% }
+.hud{ font-family:var(--titre-f); font-size:17px; font-weight:700; letter-spacing:.06em; color:var(--glace-t); margin:0; text-align:center }
+.pas{ display:flex; gap:7px; flex-wrap:wrap; justify-content:center; max-width:100% }
+.pas i{ width:9px; height:9px; border-radius:50%; border:1.5px solid var(--offl); display:block; transition:background .8s ease }
+.pas i.fait{ background:var(--offl) }
+.pas i.ici{ background:var(--or-t); border-color:var(--or-t) }
+.milieu{ flex:1; width:100%; max-width:680px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px; min-width:0 }
+.bas{ width:100%; max-width:680px; display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between }
+.bas .big{ margin-left:auto }
+
+/* panneau de lecture : fond doux, jamais d'étoiles derrière un mot */
+.panneau{ width:100%; background:var(--panneau); border:1px solid var(--panneau-b); border-radius:24px; padding:30px 32px; min-width:0;
+  box-shadow:0 10px 34px rgba(15,25,70,.10) }
+.question{ font-family:var(--lire-f); font-size:28px; line-height:1.6; letter-spacing:.02em; word-spacing:.1em; margin:0; color:var(--txt); max-width:24em }
+.phrase{ font-family:var(--lire-f); font-size:27px; line-height:1.6; letter-spacing:.02em; word-spacing:.1em; margin:0; color:var(--txt) }
+.phrase.petite{ font-size:22px; color:var(--txt2) }
+.aide-btn{ margin-top:22px; min-height:48px; padding:0 16px; border-radius:12px; border:1.5px dashed var(--glace-t); background:transparent; color:var(--glace-t);
+  font-size:16px; font-weight:700; cursor:pointer }
+.aide{ margin:20px 0 0; font-size:20px; line-height:1.6; letter-spacing:.02em; color:var(--txt2); animation:fondu .6s ease both }
+/* le verset : panneau crème, texte bleu nuit, dans les deux thèmes */
+.lire{ width:100%; background:var(--creme); color:var(--encre); border:1px solid var(--creme-b); border-radius:24px; padding:30px 34px; min-width:0;
+  box-shadow:0 10px 34px rgba(15,25,70,.12) }
+.lire .ref{ font-family:var(--titre-f); font-size:19px; font-weight:700; letter-spacing:.04em; color:var(--ref); margin:0 0 14px }
+.lire .frag{ font-family:var(--lire-f); font-size:28px; line-height:1.7; letter-spacing:.03em; word-spacing:.12em; margin:0; max-width:22em; animation:fondu .6s ease both }
+.lire .refrain{ font-family:var(--lire-f); font-size:24px; line-height:1.6; letter-spacing:.03em; color:#7A570B; font-weight:700; margin:18px 0 0; animation:fondu .8s ease both }
+.lecteur{ display:flex; align-items:center; gap:10px; justify-content:center }
+.lecteur svg{ width:30px; height:30px }
+.lecteur b{ font-family:var(--titre-f); font-size:15px; color:var(--txt2); min-width:2.6em }
+.livre{ display:flex; align-items:center; gap:10px; margin:0; font-size:17px; line-height:1.5; color:var(--txt2); text-align:left;
+  background:var(--panneau); border:1px solid var(--panneau-b); border-radius:14px; padding:10px 16px; max-width:30em }
+.livre svg{ width:30px; height:30px; flex:none }
+.video{ display:flex; gap:18px; align-items:center }
+.video svg{ width:64px; height:64px; flex:none }
+.video .vt{ margin:0 0 6px; font-family:var(--titre-f); font-size:17px; font-weight:700; color:var(--glace-t) }
+img.lff{ display:block; width:100%; height:auto; border-radius:18px; border:1px solid var(--panneau-b) }
+img.vignette{ max-width:360px; margin:0 auto }
+img.haute{ max-height:34vh; width:auto; max-width:100%; margin:0 auto }
+.champ, textarea.champ{ width:100%; border-radius:14px; border:1.5px solid var(--line); padding:14px 16px; font-family:var(--lire-f); font-size:21px;
+  background:#FFFFFF; color:#1B2340; letter-spacing:.02em }
+textarea.champ{ min-height:96px; resize:vertical }
+.liste{ margin:16px 0 0; padding-left:22px; font-size:19px; line-height:1.6 }
+/* repli pour l'adulte : fermé par défaut */
+details.repli{ width:100%; max-width:680px; border-radius:14px; border:1px dashed var(--panneau-b); background:var(--panneau); opacity:.95 }
+details.repli summary{ list-style:none; cursor:pointer; min-height:48px; display:flex; align-items:center; gap:8px; padding:0 16px;
+  font-family:var(--titre-f); font-size:15px; font-weight:700; color:var(--txt2) }
+details.repli summary::-webkit-details-marker{ display:none }
+.repli-c{ padding:0 18px 16px; font-size:17px; line-height:1.55; color:var(--txt) }
+.repli-c p{ margin:0 0 10px }
+.repli-c b{ color:var(--glace-t) }
+
+/* ---------- accueil, badge, signal crypté ---------- */
+.centre{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px; text-align:center;
+  min-height:calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); padding:8px 0 28px }
+.titre{ font-family:var(--titre-f); font-size:clamp(42px, 8vw, 74px); font-weight:800; letter-spacing:.05em; margin:0; color:var(--txt);
+  text-shadow:0 0 22px rgba(143,208,242,.45) }
+.sous{ font-family:var(--lire-f); font-size:clamp(20px, 3.4vw, 26px); color:var(--txt2); margin:-10px 0 0 }
+.hublot{ position:relative; width:min(92vw, 720px); aspect-ratio:1200/324; border-radius:999px; overflow:hidden; background:#0E1630;
+  border:6px solid #8E9EC4; box-shadow:0 0 0 3px #CBD5EB, 0 0 0 9px rgba(143,208,242,.18), inset 0 0 30px rgba(0,0,0,.5) }
+.hublot img, .hublot > svg{ display:block; width:100%; height:100%; object-fit:cover; border:0; border-radius:0 }
+.pulse{ position:absolute; left:73%; top:40%; width:14px; height:14px; margin:-7px; border-radius:50%; background:#FFE9A8; box-shadow:0 0 12px 4px rgba(255,220,140,.7) }
+.pulse::after{ content:""; position:absolute; inset:-4px; border-radius:50%; border:2px solid rgba(255,233,168,.9); animation:onde 1s ease-out .6s both }
+@keyframes onde{ from{ transform:scale(.6); opacity:1 } to{ transform:scale(5); opacity:0 } }
+.badge{ position:relative; width:min(90vw, 470px); aspect-ratio:85.6/54; border-radius:20px; text-align:left; color:#FFFFFF;
+  background:linear-gradient(135deg,#1F2B55,#2B3C78 60%,#203A66); border:2px solid #8FD0F2; padding:5% 6%; overflow:hidden;
+  box-shadow:0 0 0 6px rgba(143,208,242,.15), 0 14px 34px rgba(10,20,50,.35) }
+.badge .b-ent{ font-family:var(--titre-f); font-weight:700; letter-spacing:.08em; font-size:clamp(14px,2.4vw,18px); color:#8FD0F2 }
+.badge .b-corps{ display:flex; gap:5%; margin-top:6%; align-items:center }
+.badge .b-av{ width:26%; aspect-ratio:1; flex:none }
+.badge .b-lig{ font-size:clamp(13px,2vw,16px); color:#C9D4EE; margin:0 0 6px }
+.badge .b-val{ font-family:var(--titre-f); font-weight:800; font-size:clamp(22px,4vw,32px); margin:0; word-break:break-word }
+.tampon{ position:absolute; right:5%; bottom:8%; padding:6px 14px; border:3px solid #7FD9B8; border-radius:12px; color:#9FF0CF; background:rgba(20,30,60,.6);
+  font-family:var(--titre-f); font-weight:800; font-size:clamp(15px,2.8vw,21px); transform:rotate(-6deg) scale(1.5); opacity:0; transition:transform .9s ease, opacity .9s ease }
+.tampon.on{ transform:rotate(-6deg) scale(1); opacity:1 }
+.crypto{ width:100%; border-radius:22px; padding:28px 30px; background:#2A2152; border:2px solid #8C7AE0; color:#D9CEFF;
+  font-family:Consolas, 'Courier New', monospace; font-size:26px; line-height:1.6; letter-spacing:.12em; word-break:break-all; text-align:left;
+  box-shadow:0 0 0 6px rgba(189,174,247,.16) }
+.crypto.clair{ background:var(--creme); color:var(--encre); border-color:var(--creme-b); font-family:var(--lire-f); letter-spacing:.03em; word-break:normal; box-shadow:none }
+.verrou{ display:flex; align-items:center; gap:12px; justify-content:center }
+.verrou svg{ width:54px; height:54px }
+
+/* ---------- carte du ciel ---------- */
+.plateau{ display:grid; gap:14px; height:max(600px, calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px));
+  grid-template-rows:minmax(330px,1fr) auto; padding-bottom:12px }
+.plateau .board{ min-height:0; display:flex; justify-content:center }
+.plateau .board svg{ width:100%; height:100%; max-width:600px }
+.plateau .side{ display:flex; flex-direction:column; gap:12px; align-items:stretch; width:100%; max-width:520px; margin:0 auto }
+.plateau .side .big{ width:100% }
+@media (orientation:landscape) and (min-width:700px){
+  .plateau{ grid-template-rows:minmax(0,1fr); grid-template-columns:minmax(0,1fr) 300px }
+  .plateau .side{ justify-content:center }
+}
+.noeud.on path.e{ filter:drop-shadow(0 0 5px rgba(255,210,94,.9)) }
+.etat{ font-family:var(--titre-f); font-size:17px; font-weight:700; color:var(--txt2); text-align:center; margin:0 }
+.mini-verrou{ display:flex; align-items:center; gap:10px; justify-content:center; margin:0; font-size:16px; color:var(--violet-t); font-weight:700; text-align:left }
+.mini-verrou svg{ width:38px; height:38px; flex:none }
+
+/* ---------- niveaux ---------- */
+.rond{ position:relative; width:min(62vw, 300px); aspect-ratio:1; border-radius:50%; display:grid; place-items:center; overflow:hidden;
+  background:radial-gradient(circle at 50% 40%, #2C3D72, #141C3A 72%); border:6px solid #8E9EC4;
+  box-shadow:0 0 0 3px #CBD5EB, 0 0 0 10px rgba(143,208,242,.16) }
+.rond > svg.pic{ width:52%; height:52% }
+.rond img{ width:100%; height:100%; object-fit:cover; border:0; border-radius:0 }
+.rond > svg:not(.pic){ position:absolute; inset:0; width:100%; height:100% }
+.nom-niv{ font-family:var(--titre-f); font-size:clamp(28px,5vw,40px); font-weight:800; letter-spacing:.08em; margin:0; color:var(--txt); text-align:center }
+.emet .ondes path{ opacity:0; animation:emission 1s ease-out .5s forwards }
+.emet .ondes path:nth-child(2){ animation-delay:.7s } .emet .ondes path:nth-child(3){ animation-delay:.9s }
+@keyframes emission{ from{ opacity:0; transform:scale(.7) } to{ opacity:1; transform:none } }
+.emet .ondes{ transform-origin:32px 26px }
+.g-etoile{ width:min(56vw, 230px); height:auto; overflow:visible }
+.g-etoile .e{ transition:fill 1s ease, stroke 1s ease, filter 1s ease }
+.g-etoile.on .e{ filter:drop-shadow(0 0 14px rgba(255,210,94,.9)) }
+.coeur{ width:min(34vw, 130px); height:auto }
+
+/* cartes de l'observatoire */
+.rang-lab{ font-family:var(--titre-f); font-size:17px; font-weight:800; letter-spacing:.06em; margin:0; align-self:flex-start }
+.rang-lab.or{ color:var(--or-t) } .rang-lab.glace{ color:var(--glace-t) }
+.rang{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; width:100% }
+.carte{ border:0; background:none; padding:0; perspective:900px; cursor:pointer; min-width:0; aspect-ratio:5/7; width:100% }
+.carte .in{ position:relative; width:100%; height:100%; transform-style:preserve-3d; transition:transform .9s ease }
+.carte.ouverte .in{ transform:rotateY(180deg) }
+.carte .f{ position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius:16px; overflow:hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:6px; padding:10px 8px }
+.carte .dos{ justify-content:center }
+.carte.A .dos{ background:radial-gradient(circle at 50% 40%, #FFF0C4, #EDC66C 72%, #D9A946); border:3px solid #F7DFA0 }
+.carte.V .dos{ background:radial-gradient(circle at 50% 40%, #E2F4FD, #92CDEB 72%, #6FB3DA); border:3px solid #CFEAF8 }
+.carte .dos svg{ width:62%; height:auto }
+.carte .k{ font-family:var(--titre-f); font-weight:800; letter-spacing:.04em; font-size:14px; color:#1B2340 }
+.carte .face{ transform:rotateY(180deg); background:#FBFCFE; color:#1B2340 }
+.carte.A .face{ border:3px solid #D9A946 } .carte.V .face{ border:3px solid #6FB3DA; justify-content:center }
+.carte .face svg{ width:40%; height:auto; flex:none }
+.carte .face .t{ font-family:var(--lire-f); font-size:14px; font-weight:400; line-height:1.4; letter-spacing:.01em; text-align:center; margin:0 }
+.carte .face .vr{ font-family:var(--lire-f); font-size:17px; font-weight:700; line-height:1.4; text-align:center; margin:0 }
+.carte.ok .face{ border-color:#3FAF86; background:#E7F7F0; box-shadow:0 0 18px rgba(127,217,184,.8) }
+.carte .conf{ font-family:var(--titre-f); font-size:12.5px; font-weight:800; color:#16624A; opacity:0; transition:opacity .9s ease; margin-top:auto; text-align:center }
+.carte.ok .conf{ opacity:1 }
+@media (orientation:landscape) and (min-width:700px) and (max-height:900px){ .carte{ aspect-ratio:4/5 } .rang{ max-width:640px; margin:0 auto } .carte .face svg{ width:30% } }
+.voile{ position:fixed; inset:0; z-index:25; background:rgba(12,18,40,.55); display:flex; align-items:center; justify-content:center;
+  padding:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); animation:fondu .4s ease both }
+.voile{ background:rgba(12,18,40,.8) }
+.voile .boite-v{ width:100%; max-width:680px; display:flex; flex-direction:column; gap:20px; align-items:center; max-height:100%; overflow:auto;
+  background:var(--bg); border:1px solid var(--panneau-b); border-radius:28px; padding:28px 24px; box-shadow:0 20px 60px rgba(0,0,0,.35) }
+
+/* tri du décodeur */
+.tri{ width:100%; display:flex; flex-direction:column; align-items:center; gap:26px }
+.pile{ min-height:150px; display:flex; align-items:center; justify-content:center; width:100% }
+.mot{ position:relative; display:flex; align-items:center; gap:16px; width:min(84vw, 340px); padding:16px 22px; border-radius:18px; background:#FBFCFE; color:#1B2340;
+  border:3px solid #8E9EC4; box-shadow:0 10px 26px rgba(15,25,70,.2); touch-action:none; cursor:grab; user-select:none; -webkit-user-select:none }
+.mot.tenu{ cursor:grabbing; box-shadow:0 18px 40px rgba(15,25,70,.3); z-index:5 }
+.mot svg{ width:58px; height:58px; flex:none }
+.mot .w{ font-family:var(--lire-f); font-size:28px; font-weight:700; margin:0 }
+.mot .r{ font-family:var(--lire-f); font-size:15px; color:#43517A; margin:4px 0 0 }
+.tiroirs{ display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:14px; width:100% }
+.tiroir{ min-height:170px; border-radius:20px; border:3px dashed var(--line); background:var(--panneau); display:flex; flex-direction:column; align-items:center; gap:10px; padding:14px; cursor:pointer }
+.tiroir.nom{ border-color:#C9A146 }
+.tiroir .t-nom{ font-family:var(--titre-f); font-size:22px; font-weight:800; letter-spacing:.1em; color:var(--txt2) }
+.tiroir.nom .t-nom{ color:var(--or-t) }
+.t-contenu{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center }
+.puce{ padding:6px 12px; border-radius:999px; background:#E3EBF8; color:#1B2340; font-size:16px; font-weight:700; animation:fondu .5s ease both }
+.puce.or{ background:#FFE7A8 }
+@media (max-width:520px){ .tiroirs{ grid-template-columns:1fr 1fr } .tiroir{ min-height:150px } }
+
+/* arrimage, constellation, capsule */
+.ciel{ width:100%; border-radius:22px; background:radial-gradient(ellipse at 50% 30%, #24346A, #121A38 75%); border:1px solid #3A4A80; overflow:hidden }
+.ciel svg{ display:block; width:100%; height:auto }
+.dock .vais{ transition:transform 1s cubic-bezier(.3,.7,.3,1) }
+.dock .stat{ transition:transform 1s cubic-bezier(.3,.7,.3,1) }
+.dock.pas1 .vais{ transform:translateX(64px) }
+.dock.pas2 .stat{ transform:translateX(-64px) }
+.dock .joint{ opacity:0; transition:opacity .8s ease }
+.dock.ok .joint{ opacity:1 }
+.constel .lien{ stroke-dasharray:400; stroke-dashoffset:400 }
+.constel.on .lien{ stroke-dashoffset:0; transition:stroke-dashoffset 1s ease }
+.constel .lettre{ opacity:0 }
+.constel.on .lettre{ animation:fondu .5s ease forwards }
+.constel .st{ transition:fill .8s ease }
+.capsule{ width:min(64vw, 280px); height:auto; cursor:pointer }
+.capsule .couv{ transition:transform 1s ease; transform-origin:16px 30px }
+.capsule.ouverte .couv{ transform:rotate(-24deg) translateY(-6px) }
+.capsule .msg{ transition:transform 1s ease; transform:translateY(10px) }
+.capsule.ouverte .msg{ transform:translateY(-14px) }
+.capsule .sceau-c{ transition:opacity .6s ease }
+.capsule.ouverte .sceau-c{ opacity:0 }
+.capbtn{ border:0; background:none; padding:0; cursor:pointer; border-radius:16px }
+
+/* ---------- tablette couchée : tout tient sans défiler ---------- */
+@media (orientation:landscape) and (max-height:820px){
+  .scene{ gap:12px; padding-bottom:16px } .milieu{ gap:16px } .scene .haut{ gap:6px }
+  .rang{ max-width:680px } .carte{ aspect-ratio:4/5 } .carte .face svg{ width:26% } .rang-lab{ font-size:15px }
+  .rond{ width:min(34vh, 260px) } .g-etoile{ width:min(26vh, 200px) } .coeur{ width:min(14vh, 110px) }
+  img.haute{ max-height:27vh }
+}
+
+/* ---------- téléphone ---------- */
+@media (max-width:520px){
+  .panneau, .lire{ padding:22px 20px; border-radius:20px }
+  .question{ font-size:23px } .phrase{ font-size:23px } .phrase.petite{ font-size:19px }
+  .lire .frag{ font-size:23px } .lire .refrain{ font-size:20px } .crypto{ font-size:21px; padding:22px }
+  .big{ font-size:20px; min-height:68px; padding:0 22px } .btn{ font-size:16px; padding:0 16px }
+  .rang{ grid-template-columns:repeat(2, minmax(0,1fr)) } .carte .face .t{ font-size:14px } .carte{ aspect-ratio:5/6 }
+  .rang.rv .carte{ aspect-ratio:5/3 } .rang.rv .carte .f{ gap:2px; padding:6px } .rang.rv .carte svg{ width:30% } .rang.rv .carte .vr{ font-size:15px }
+  .top .mini .cdt{ display:none }
+  .milieu{ gap:22px } .bas .big{ margin-left:0; flex:1 }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.01s !important; animation-iteration-count:1 !important; transition-duration:.01s !important; animation-delay:0s !important; transition-delay:0s !important }
+  .decor .neb, .decor .champ, .decor .orbite{ animation:none !important }
+  .particule, .halo-t{ display:none }
+}
+</style>
+<script>/* thème posé avant le premier affichage : clair par défaut */
+try{ document.documentElement.dataset.theme = localStorage.getItem('operationSignal.famille.theme') || 'clair' }catch(e){ document.documentElement.dataset.theme = 'clair' }</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+  <linearGradient id="g-or" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1A8"/><stop offset=".5" stop-color="#FFD25E"/><stop offset="1" stop-color="#E39A12"/></linearGradient>
+  <radialGradient id="g-halo"><stop offset="0" stop-color="#FFF3A6" stop-opacity=".75"/><stop offset=".6" stop-color="#FFD25E" stop-opacity=".22"/><stop offset="1" stop-color="#FFD25E" stop-opacity="0"/></radialGradient>
+  <radialGradient id="g-planete" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#BFE6FF"/><stop offset=".6" stop-color="#4E8FD6"/><stop offset="1" stop-color="#2B5C9C"/></radialGradient>
+  <radialGradient id="g-station" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#FFF7D6"/><stop offset=".55" stop-color="#FFE29A"/><stop offset="1" stop-color="#E8B84A"/></radialGradient>
+
+  <symbol id="i-fleche" viewBox="0 0 64 64"><path d="M14 32 H46 M36 20 L48 32 L36 44" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-retour" viewBox="0 0 64 64"><path d="M50 32 H18 M28 20 L16 32 L28 44" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-video" viewBox="0 0 64 64">
+    <rect x="6" y="12" width="52" height="34" rx="7" fill="#24346A" stroke="#1B2340" stroke-width="2.5"/>
+    <circle cx="32" cy="29" r="10" fill="#8FD0F2"/><path d="M29 23.5 L38 29 L29 34.5 Z" fill="#1B2340"/>
+    <path d="M24 54 H40" stroke="#8E9EC4" stroke-width="3" stroke-linecap="round"/></symbol>
+  <symbol id="i-livre" viewBox="0 0 64 64">
+    <path d="M6 48 V18 Q19 13 32 20 Q45 13 58 18 V48 Q45 43 32 50 Q19 43 6 48 Z" fill="#FFF8E8" stroke="#1B2340" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M32 20 V50" stroke="#1B2340" stroke-width="2"/>
+    <path d="M12 27 H26 M12 33 H26 M12 39 H22 M38 27 H52 M38 33 H52 M38 39 H48" stroke="#9AA6C2" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-livre7" viewBox="0 0 64 64">
+    <path d="M6 54 V26 Q19 21 32 28 Q45 21 58 26 V54 Q45 49 32 56 Q19 49 6 54 Z" fill="#FFF8E8" stroke="#1B2340" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M32 28 V56" stroke="#1B2340" stroke-width="2"/>
+    <path d="M12 35 H26 M12 41 H26 M38 35 H52 M38 41 H52" stroke="#9AA6C2" stroke-width="2" stroke-linecap="round"/>
+    <g fill="url(#g-or)" stroke="#8A5A00" stroke-width="1"><path d="M20 6 l2 4.5 4.8.5-3.6 3.2 1 4.8-4.2-2.5-4.2 2.5 1-4.8-3.6-3.2 4.8-.5Z"/><path d="M36 2 l1.6 3.6 3.9.4-2.9 2.6.8 3.8-3.4-2-3.4 2 .8-3.8-2.9-2.6 3.9-.4Z"/><path d="M48 10 l1.4 3.1 3.4.4-2.5 2.2.7 3.3-3-1.7-3 1.7.7-3.3-2.5-2.2 3.4-.4Z"/></g></symbol>
+  <symbol id="i-cad" viewBox="0 0 64 64">
+    <path d="M4 22 q5 -9 10 0 t10 0 t10 0" fill="none" stroke="#8C7AE0" stroke-width="3.4" stroke-linecap="round"/>
+    <path d="M30 36 V29 a9 9 0 0 1 18 0 V36" fill="none" stroke="#8C7AE0" stroke-width="5"/>
+    <rect x="24" y="35" width="30" height="23" rx="5" fill="#6A55C8" stroke="#2A2152" stroke-width="2"/><circle cx="39" cy="46" r="3.6" fill="#E9E2FF"/></symbol>
+  <symbol id="i-boite" viewBox="0 0 64 64">
+    <rect x="6" y="16" width="52" height="34" rx="17" fill="#DDE8F7" stroke="#1B2340" stroke-width="3"/>
+    <path d="M27 28 A5.5 5.5 0 1 1 34 33 Q32 34.5 32 38" fill="none" stroke="#1B2340" stroke-width="3.4" stroke-linecap="round"/>
+    <circle cx="32" cy="42.5" r="2.2" fill="#1B2340"/></symbol>
+  <symbol id="i-coeur" viewBox="0 0 64 64">
+    <path d="M32 56 C 12 42 4 32 4 21 A13 13 0 0 1 32 15 A13 13 0 0 1 60 21 C 60 32 52 42 32 56 Z" fill="#F4AFAA" stroke="#B5574F" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M16 20 a7 7 0 0 1 8 -4" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity=".7"/></symbol>
+  <symbol id="i-vaisseau" viewBox="0 0 64 64">
+    <path d="M20 22 L13 11 L30 20 Z M20 42 L13 53 L30 44 Z" fill="#E8B84A" stroke="#1B2340" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M8 32 C 16 19 40 17 58 32 C 40 47 16 45 8 32 Z" fill="#EAF3FC" stroke="#1B2340" stroke-width="3"/>
+    <circle cx="38" cy="32" r="6" fill="#5FB4E6" stroke="#1B2340" stroke-width="2"/></symbol>
+  <symbol id="i-station" viewBox="0 0 64 64">
+    <rect x="4" y="27" width="18" height="10" rx="2" fill="#7FA6D8" stroke="#1B2340" stroke-width="2"/>
+    <rect x="42" y="27" width="18" height="10" rx="2" fill="#7FA6D8" stroke="#1B2340" stroke-width="2"/>
+    <circle cx="32" cy="32" r="12" fill="#EAF3FC" stroke="#1B2340" stroke-width="3"/>
+    <circle cx="32" cy="32" r="5" fill="#E8B84A" stroke="#1B2340" stroke-width="1.6"/></symbol>
+  <symbol id="i-lecteur" viewBox="0 0 64 64">
+    <path d="M6 50 V18 Q19 13 32 20 Q45 13 58 18 V50 Q45 45 32 52 Q19 45 6 50 Z" fill="#FFF8E8" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M32 20 V52" stroke="currentColor" stroke-width="2.4"/></symbol>
+
+  <!-- niveaux -->
+  <symbol id="lv1" viewBox="0 0 64 64">
+    <path d="M10 40 A24 24 0 0 0 42 10 Z" fill="#CFE6F7" stroke="#1B2340" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M24 30 L38 16" stroke="#1B2340" stroke-width="2.6"/><circle cx="39" cy="15" r="3.4" fill="#E8B84A" stroke="#1B2340" stroke-width="1.6"/>
+    <path d="M24 42 L18 58 H38 L32 42" fill="#9FB2DD" stroke="#1B2340" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M48 10 a7 7 0 0 1 0 10 M54 5 a14 14 0 0 1 0 20" fill="none" stroke="#5FB4E6" stroke-width="3" stroke-linecap="round" transform="rotate(180 51 15)"/></symbol>
+  <symbol id="lv2" viewBox="0 0 64 64">
+    <g transform="rotate(-28 32 28)"><rect x="8" y="22" width="40" height="13" rx="4" fill="#CFE6F7" stroke="#1B2340" stroke-width="3"/>
+    <rect x="46" y="19" width="9" height="19" rx="2" fill="#E8B84A" stroke="#1B2340" stroke-width="2.6"/></g>
+    <path d="M30 36 L19 58 M30 36 L41 58 M30 36 V58" stroke="#1B2340" stroke-width="3" stroke-linecap="round"/>
+    <path d="M57 4 l1.5 3.4 3.7.4-2.8 2.5.8 3.6-3.2-1.9-3.2 1.9.8-3.6-2.8-2.5 3.7-.4Z" fill="url(#g-or)" stroke="#8A5A00" stroke-width=".8"/></symbol>
+  <symbol id="lv3" viewBox="0 0 64 64">
+    <rect x="5" y="10" width="54" height="38" rx="7" fill="#2A2152" stroke="#1B2340" stroke-width="3"/>
+    <path d="M11 29 q4 -9 8 0 t8 0" fill="none" stroke="#BDAEF7" stroke-width="3" stroke-linecap="round"/>
+    <path d="M30 29 h5 M33 26 l3 3 -3 3" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="48" y="36" text-anchor="middle" font-family="Verdana, sans-serif" font-size="17" font-weight="700" fill="#FFD25E">A</text>
+    <path d="M24 57 H40 M32 48 V57" stroke="#1B2340" stroke-width="3" stroke-linecap="round"/></symbol>
+  <symbol id="lv4" viewBox="0 0 64 64">
+    <path d="M32 30 L21 59 M32 30 L43 59 M26 46 H38" stroke="#1B2340" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <circle cx="32" cy="26" r="5.5" fill="#E8B84A" stroke="#1B2340" stroke-width="2"/>
+    <g class="ondes" fill="none" stroke="#5FB4E6" stroke-width="3" stroke-linecap="round"><path d="M23 19 A12 12 0 0 1 41 19"/><path d="M17 13 A20 20 0 0 1 47 13"/><path d="M11 7 A28 28 0 0 1 53 7"/></g></symbol>
+  <symbol id="lv5" viewBox="0 0 64 64">
+    <path d="M4 32 L16 23 H29 V41 H16 Z" fill="#CFE6F7" stroke="#1B2340" stroke-width="2.6" stroke-linejoin="round"/>
+    <rect x="35" y="16" width="25" height="32" rx="6" fill="url(#g-station)" stroke="#1B2340" stroke-width="2.6"/>
+    <path d="M29 32 H35" stroke="#E8B84A" stroke-width="5"/><circle cx="47.5" cy="32" r="4" fill="#FFFFFF" stroke="#1B2340" stroke-width="1.6"/></symbol>
+
+  <!-- dos et faces des cartes -->
+  <symbol id="dos-A" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="26" fill="none" stroke="#1B2340" stroke-width="1.6" stroke-dasharray="3 3"/>
+    <path d="M32 10 L37.6 24.3 L52.9 25.2 L41.1 35 L44.9 49.8 L32 41.6 L19.1 49.8 L22.9 35 L11.1 25.2 L26.4 24.3 Z" fill="#FFF7DC" stroke="#1B2340" stroke-width="2.6" stroke-linejoin="round"/></symbol>
+  <symbol id="c-rouleau" viewBox="0 0 64 64">
+    <rect x="14" y="18" width="36" height="28" fill="#FFF8E8" stroke="#1B2340" stroke-width="2.6"/>
+    <ellipse cx="14" cy="32" rx="5" ry="15" fill="#F2D08A" stroke="#1B2340" stroke-width="2.4"/>
+    <ellipse cx="50" cy="32" rx="5" ry="15" fill="#F2D08A" stroke="#1B2340" stroke-width="2.4"/>
+    <path d="M22 27 H42 M22 33 H42 M22 39 H36" stroke="#1B2340" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="q1" viewBox="0 0 64 64">
+    <circle cx="32" cy="48" r="12" fill="url(#g-planete)" stroke="#1B2340" stroke-width="2.4"/>
+    <path d="M8 44 A24 24 0 0 1 56 44" fill="none" stroke="#5FB4E6" stroke-width="2.6" stroke-dasharray="3 3"/>
+    <path d="M32 3 L35 10.5 L43 11 L37 16 L39 24 L32 19.6 L25 24 L27 16 L21 11 L29 10.5 Z" fill="url(#g-or)" stroke="#8A5A00" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="q2" viewBox="0 0 64 64">
+    <g stroke="#E8B84A" stroke-width="3" stroke-linecap="round"><path d="M32 2 V9 M32 55 V62 M2 32 H9 M55 32 H62 M10 10 L15 15 M49 49 L54 54 M10 54 L15 49 M49 15 L54 10"/></g>
+    <path d="M32 13 L37 25.5 L50.5 26.3 L40 34.8 L43.5 48 L32 40.7 L20.5 48 L24 34.8 L13.5 26.3 L27 25.5 Z" fill="url(#g-or)" stroke="#8A5A00" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="q3" viewBox="0 0 64 64">
+    <ellipse cx="28" cy="30" rx="22" ry="12" fill="#E2DAFB" stroke="#1B2340" stroke-width="2" transform="rotate(-18 28 30)"/>
+    <path d="M28 30 C 36 22 46 28 40 36 M28 30 C 20 38 10 32 16 24" fill="none" stroke="#6A55C8" stroke-width="2.6" stroke-linecap="round"/>
+    <circle cx="28" cy="30" r="4" fill="#FFE29A" stroke="#1B2340" stroke-width="1.4"/>
+    <path d="M44 58 C 44 48 52 42 60 42 C 60 52 54 58 44 58 Z" fill="#8FD6A8" stroke="#1B2340" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M45 57 L55 47" stroke="#1B2340" stroke-width="1.6"/></symbol>
+  <symbol id="q4" viewBox="0 0 64 64">
+    <g fill="url(#g-or)" stroke="#8A5A00" stroke-width="1">
+    <circle cx="52" cy="32" r="3"/><circle cx="47.2" cy="38.6" r="3"/><circle cx="39.7" cy="38" r="3"/><circle cx="34.3" cy="34.2" r="3"/>
+    <circle cx="29.7" cy="29.8" r="3"/><circle cx="24.3" cy="26" r="3"/><circle cx="16.8" cy="25.4" r="3"/><circle cx="12" cy="32" r="3"/>
+    <circle cx="16.8" cy="38.6" r="3"/><circle cx="24.3" cy="38" r="3"/><circle cx="29.7" cy="34.2" r="3"/><circle cx="34.3" cy="29.8" r="3"/>
+    <circle cx="39.7" cy="26" r="3"/><circle cx="47.2" cy="25.4" r="3"/></g></symbol>
+  <symbol id="i-badge" viewBox="0 0 64 64">
+    <path d="M32 6 L54 14 V30 C54 44 44 52 32 58 C20 52 10 44 10 30 V14 Z" fill="#DDE8F7" stroke="#1B2340" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M20 26 H44 M20 34 H44 M24 42 H40" stroke="#7F8DAE" stroke-width="3" stroke-linecap="round"/></symbol>
+  <symbol id="i-etoile-or" viewBox="0 0 64 64">
+    <path d="M32 6 L54 14 V30 C54 44 44 52 32 58 C20 52 10 44 10 30 V14 Z" fill="#DDE8F7" stroke="#1B2340" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M32 16 L35.8 25.6 L46 26.2 L38.1 32.8 L40.6 42.8 L32 37.3 L23.4 42.8 L25.9 32.8 L18 26.2 L28.2 25.6 Z" fill="url(#g-or)" stroke="#8A5A00" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-avatar" viewBox="0 0 64 64">
+    <rect x="2" y="2" width="60" height="60" rx="14" fill="#141C3A" stroke="#8FD0F2" stroke-width="2"/>
+    <circle cx="14" cy="14" r="1.4" fill="#FFFFFF"/><circle cx="50" cy="12" r="1" fill="#FFFFFF"/><circle cx="46" cy="52" r="1.2" fill="#FFFFFF"/>
+    <use href="#i-vaisseau" x="8" y="8" width="48" height="48"/></symbol>
+</defs>
+</svg>
+
+<div class="decor" aria-hidden="true">
+  <div class="neb n1"></div><div class="neb n2"></div>
+  <svg class="champ c1" id="champ1" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice"></svg>
+  <svg class="champ c2" id="champ2" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice"></svg>
+  <div class="planete"><div class="anneau"></div></div>
+  <div class="orbite"><i class="sat"></i></div>
+</div>
+
+<div class="confirm" id="confirm" hidden>
+  <span>Tout effacer et recommencer la mission ?</span>
+  <button class="btn" id="ouiReset">Oui, recommencer</button>
+  <button class="btn leger" id="nonReset">Non</button>
+</div>
+
+<header class="top">
+  <div class="mini" id="miniBadge"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#i-avatar" width="64" height="64"/></svg><span id="miniNom">Commandant</span></div>
+  <div class="nom">Station SIGNAL</div>
+  <span class="slot-hp">
+    <button class="hp" id="btnTheme" aria-label="Passer en thème sombre"><svg viewBox="0 0 24 24" aria-hidden="true"><g id="icTheme"></g></svg></button>
+    <button class="hp" id="btnHP" aria-label="Son activé"><svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor"/>
+      <g id="hpOn"><path d="M16 9 Q18.5 12 16 15 M18.5 6.5 Q23 12 18.5 17.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
+      <g id="hpOff" style="display:none"><path d="M16.5 9.5 L21.5 14.5 M21.5 9.5 L16.5 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
+    </svg></button>
+  </span>
+  <button class="reset" id="btnReset">Recommencer</button>
+</header>
+
+<main id="app"></main>
+
+<!-- MODULE SONS : contenu de sons.js (Milo), recopié tel quel. Ne pas modifier : veto de Milo. -->
+<script id="module-sons">
+/* =====================================================================
+   Protocole V - sons.js
+   Auteur : Milo (son). Module autonome, Web Audio API, aucun fichier audio,
+   aucune ressource externe. Expose window.SonsV.
+
+   Joueur tres sensible au bruit. Seuils fixes, verifies par SonsV.verifier() :
+     - fondamentale (ou centre de filtre) entre 80 Hz et 2000 Hz
+     - attaque >= 5 ms (pas de clic sec), extinction exponentielle
+     - crete par voix <= 0,5 avant le gain maitre
+     - gain maitre 0,15 par defaut, plafonne a 0,30
+     - durees max : pop 0,12 s · carte 0,15 s · etape 0,40 s · paire 0,35 s
+                    sceau 0,65 s · victoire 1,40 s
+     - chaine : voix -> passe-bas 3 kHz -> limiteur (seuil -6 dB, garde-fou
+       seulement) -> gain maitre -> sortie. Crete d'un son seul : 0,45 x 0,15
+       = 0,068 de la pleine echelle, soit environ -23 dBFS.
+     - rien en boucle, rien en fond ; un meme son ne se relance pas a moins de 60 ms
+   Tonalite unique : do majeur.
+   ===================================================================== */
+(function () {
+  'use strict';
+
+  var CLE_MUET = 'protocoleV.sons.muet';
+  var CLE_VOL = 'protocoleV.sons.volume';
+  var VOL_DEFAUT = 0.15, VOL_MAX = 0.30;
+  var F_MIN = 80, F_MAX = 2000, ATTAQUE_MIN = 0.005, CRETE_MAX = 0.5;
+  var ANTI_REBOND = 0.06, VOIX_MAX = 12;
+
+  var DUREE_MAX = { pop: 0.12, carte: 0.15, etape: 0.40, paire: 0.35, sceau: 0.65, victoire: 1.40 };
+
+  /* ---- Partitions. t = depart (s), a = attaque (s), d = duree totale de la voix (s),
+          g = crete, f0 -> f1 = glissando (Hz), fc0 -> fc1 = balayage du filtre (Hz). ---- */
+  var SONS = {
+    // petite bulle qui monte : sinus 420 -> 680 Hz, 90 ms
+    pop: [
+      { type: 'osc', onde: 'sine', f0: 420, f1: 680, t: 0, a: 0.006, d: 0.09, g: 0.45 }
+    ],
+    // froissement de carte : souffle filtre + petit appui grave, 110 ms
+    carte: [
+      { type: 'bruit', filtre: 'bandpass', fc0: 700, fc1: 1400, q: 1.2, t: 0, a: 0.012, d: 0.11, g: 0.30 },
+      { type: 'osc', onde: 'triangle', f0: 300, f1: 260, t: 0, a: 0.006, d: 0.07, g: 0.12 }
+    ],
+    // souffle tres leger, decale de 50 ms pour ne pas s'empiler sur le pop du bouton
+    etape: [
+      { type: 'bruit', filtre: 'lowpass', fc0: 300, fc1: 1100, q: 0.7, t: 0.05, a: 0.12, d: 0.32, g: 0.22 }
+    ],
+    // paire trouvee : do5 puis sol5 (quinte montante), 320 ms
+    paire: [
+      { type: 'osc', onde: 'sine',     f0: 523.25, t: 0,    a: 0.008, d: 0.18, g: 0.34 },
+      { type: 'osc', onde: 'triangle', f0: 523.25, t: 0,    a: 0.008, d: 0.18, g: 0.07 },
+      { type: 'osc', onde: 'sine',     f0: 783.99, t: 0.10, a: 0.008, d: 0.22, g: 0.40 },
+      { type: 'osc', onde: 'triangle', f0: 783.99, t: 0.10, a: 0.008, d: 0.22, g: 0.08 }
+    ],
+    // sceau : carillon doux mi5 - sol5 - do6, 600 ms
+    sceau: [
+      { type: 'osc', onde: 'sine',     f0: 659.25,  t: 0,    a: 0.006, d: 0.38, g: 0.30 },
+      { type: 'osc', onde: 'triangle', f0: 659.25,  t: 0,    a: 0.006, d: 0.20, g: 0.05 },
+      { type: 'osc', onde: 'sine',     f0: 783.99,  t: 0.11, a: 0.006, d: 0.38, g: 0.28 },
+      { type: 'osc', onde: 'triangle', f0: 783.99,  t: 0.11, a: 0.006, d: 0.20, g: 0.05 },
+      { type: 'osc', onde: 'sine',     f0: 1046.50, t: 0.22, a: 0.006, d: 0.38, g: 0.34 },
+      { type: 'osc', onde: 'triangle', f0: 1046.50, t: 0.22, a: 0.006, d: 0.20, g: 0.05 }
+    ],
+    // victoire : arpege do5 mi5 sol5, puis accord do6 / sol4 / do4 tenu, 1,20 s
+    victoire: [
+      { type: 'osc', onde: 'sine',     f0: 523.25,  t: 0,    a: 0.008, d: 0.25, g: 0.28 },
+      { type: 'osc', onde: 'sine',     f0: 659.25,  t: 0.13, a: 0.008, d: 0.25, g: 0.31 },
+      { type: 'osc', onde: 'sine',     f0: 783.99,  t: 0.26, a: 0.008, d: 0.30, g: 0.34 },
+      { type: 'osc', onde: 'sine',     f0: 1046.50, t: 0.40, a: 0.020, d: 0.80, g: 0.36 },
+      { type: 'osc', onde: 'sine',     f0: 392.00,  t: 0.40, a: 0.030, d: 0.80, g: 0.12 },
+      { type: 'osc', onde: 'triangle', f0: 261.63,  t: 0.40, a: 0.030, d: 0.80, g: 0.14 }
+    ]
+  };
+
+  /* ---- Etat ---- */
+  var ctx = null, bus = null, maitre = null, bruitBuf = null;
+  var actives = 0, dernier = {};
+  var muetEtat = lire(CLE_MUET) === '1';
+  var volume = borne(parseFloat(lire(CLE_VOL)), VOL_DEFAUT);
+
+  function lire(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function ecrire(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* stockage indisponible */ } }
+  function borne(v, defaut) { if (typeof v !== 'number' || isNaN(v)) return defaut; return Math.max(0, Math.min(VOL_MAX, v)); }
+
+  /* ---- Demarrage au premier toucher seulement ---- */
+  function deverrouiller() {
+    try {
+      if (!ctx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        ctx = new AC();
+        var passeBas = ctx.createBiquadFilter();
+        passeBas.type = 'lowpass'; passeBas.frequency.value = 3000; passeBas.Q.value = 0.5;
+        var limiteur = ctx.createDynamicsCompressor();
+        limiteur.threshold.value = -6; limiteur.knee.value = 6; limiteur.ratio.value = 12;
+        limiteur.attack.value = 0.003; limiteur.release.value = 0.1;
+        maitre = ctx.createGain();
+        maitre.gain.value = muetEtat ? 0 : volume;
+        passeBas.connect(limiteur); limiteur.connect(maitre); maitre.connect(ctx.destination);
+        bus = passeBas;
+        bruitBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.5), ctx.sampleRate);
+        var dat = bruitBuf.getChannelData(0);
+        for (var i = 0; i < dat.length; i++) dat[i] = Math.random() * 2 - 1;
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+    } catch (e) { /* pas d'audio : le jeu reste muet, sans erreur */ }
+  }
+  ['pointerdown', 'touchend', 'click', 'keydown'].forEach(function (ev) {
+    window.addEventListener(ev, deverrouiller, { capture: true, passive: true });
+  });
+
+  /* ---- Moteur ---- */
+  function enveloppe(g, t0, v) {
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(v.g, t0 + v.a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + v.d);
+    g.gain.setValueAtTime(0, t0 + v.d + 0.005);
+  }
+
+  function voix(v, t0) {
+    var g = ctx.createGain(), src;
+    if (v.type === 'osc') {
+      src = ctx.createOscillator();
+      src.type = v.onde;
+      src.frequency.setValueAtTime(v.f0, t0);
+      if (v.f1) src.frequency.exponentialRampToValueAtTime(v.f1, t0 + Math.min(0.05, v.d));
+      src.connect(g);
+    } else {
+      src = ctx.createBufferSource();
+      src.buffer = bruitBuf;
+      var f = ctx.createBiquadFilter();
+      f.type = v.filtre; f.Q.value = v.q;
+      f.frequency.setValueAtTime(v.fc0, t0);
+      f.frequency.exponentialRampToValueAtTime(v.fc1, t0 + v.d * 0.6);
+      src.connect(f); f.connect(g);
+    }
+    enveloppe(g, t0, v);
+    g.connect(bus);
+    actives++;
+    src.onended = function () { actives--; try { g.disconnect(); } catch (e) {} };
+    src.start(t0);
+    src.stop(t0 + v.d + 0.02);
+  }
+
+  function jouer(nom) {
+    if (muetEtat || !ctx || ctx.state !== 'running') return;
+    var now = ctx.currentTime;
+    if (dernier[nom] !== undefined && now - dernier[nom] < ANTI_REBOND) return;
+    var p = SONS[nom];
+    if (actives + p.length > VOIX_MAX) return;
+    dernier[nom] = now;
+    var base = now + 0.01;
+    try { p.forEach(function (v) { voix(v, base + v.t); }); } catch (e) { /* silence plutot qu'erreur */ }
+  }
+
+  /* ---- Controle par code, sans oreille ---- */
+  function verifier() {
+    var ecarts = [];
+    Object.keys(SONS).forEach(function (nom) {
+      SONS[nom].forEach(function (v, i) {
+        var id = nom + '[' + i + ']';
+        var fs = v.type === 'osc' ? [v.f0, v.f1 || v.f0] : [v.fc0, v.fc1];
+        fs.forEach(function (f) { if (f < F_MIN || f > F_MAX) ecarts.push(id + ' frequence ' + f + ' Hz hors [80, 2000]'); });
+        if (v.a < ATTAQUE_MIN) ecarts.push(id + ' attaque ' + v.a + ' s < 5 ms');
+        if (v.a >= v.d) ecarts.push(id + ' attaque >= duree');
+        if (v.g > CRETE_MAX) ecarts.push(id + ' crete ' + v.g + ' > 0,5');
+        if (v.t + v.d > DUREE_MAX[nom]) ecarts.push(id + ' finit a ' + (v.t + v.d).toFixed(2) + ' s > ' + DUREE_MAX[nom] + ' s');
+      });
+    });
+    if (VOL_DEFAUT > VOL_MAX) ecarts.push('volume par defaut > plafond');
+    return ecarts; // tableau vide = tous les seuils tenus
+  }
+
+  window.SonsV = {
+    pop: function () { jouer('pop'); },
+    carte: function () { jouer('carte'); },
+    sceau: function () { jouer('sceau'); },
+    paire: function () { jouer('paire'); },
+    etape: function () { jouer('etape'); },
+    victoire: function () { jouer('victoire'); },
+    setVolume: function (v) {
+      volume = borne(Number(v), VOL_DEFAUT);
+      ecrire(CLE_VOL, String(volume));
+      if (maitre && !muetEtat) maitre.gain.setTargetAtTime(volume, ctx.currentTime, 0.02);
+      return volume;
+    },
+    muet: function (oui) {
+      muetEtat = !!oui;
+      ecrire(CLE_MUET, muetEtat ? '1' : '0');
+      if (maitre) maitre.gain.setTargetAtTime(muetEtat ? 0 : volume, ctx.currentTime, 0.02);
+      return muetEtat;
+    },
+    estMuet: function () { return muetEtat; },
+    verifier: verifier
+  };
+})();
+
+</script>
+
+<script>
+/* ===================== OUTILS ===================== */
+const app = document.getElementById('app');
+const $ = id => document.getElementById(id);
+/* échappe, et lie les guillemets et les deux-points au mot voisin (espace insécable) : jamais « seul en fin de ligne */
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  .replace(/« /g,'« ').replace(/ »/g,' »').replace(/ ([:?!;])/g,' $1');
+const ico = (id, cls='') => `<svg viewBox="0 0 64 64" class="${cls}" aria-hidden="true"><use href="#${id}" width="64" height="64"/></svg>`;
+const calme = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function son(nom){ try{ if (window.SonsV && typeof SonsV[nom] === 'function') SonsV[nom]() }catch(e){} }
+function etoileD(cx, cy, R, r){ let d=''; for(let k=0;k<10;k++){ const a=-Math.PI/2+k*Math.PI/5, rr=k%2?r:R; d+=(k?'L':'M')+(cx+rr*Math.cos(a)).toFixed(1)+' '+(cy+rr*Math.sin(a)).toFixed(1)+' ' } return d+'Z' }
+
+/* ===================== TEXTES — recopiés de la trame du 05/11/2026 ===================== */
+/* versets : seulement le morceau utile (partie D2) ; lit : qui lit pendant l'étude */
+const V = {
+  ch:   { ref:"2 Chroniques 2:5", f:["notre Dieu est plus grand que tous les autres dieux"], lit:'moi' },
+  is8:  { ref:"Isaïe 42:8", f:["Je suis Jéhovah.", "C'est là mon nom"], lit:'toi' },
+  ex:   { ref:"Exode 3:15", f:["C'est là mon nom pour toujours"], lit:'moi' },
+  ps83: { ref:"Psaume 83:18", f:["toi, dont le nom est Jéhovah,", "tu es, toi seul, le Très-Haut sur toute la terre !"], lit:'toi' },
+  re8:  { ref:"Révélation 4:8", f:["Jéhovah Dieu, le Tout-Puissant"], lit:'moi' },
+  re11: { ref:"Révélation 4:11", f:["tu as créé toutes choses"], lit:'moi' },
+  ps90: { ref:"Psaume 90:2", f:["depuis toujours et pour toujours, tu es Dieu."], lit:'moi' },
+  ps136:{ ref:"Psaume 136:1-3", f:["Remerciez Jéhovah, car il est bon", "Remerciez le Dieu des dieux\nRemerciez le Seigneur des seigneurs"], refrain:"car son amour fidèle est éternel", lit:'toi' },
+  rm:   { ref:"Romains 10:13", f:["tous ceux qui feront appel au nom de Jéhovah", "seront sauvés"], lit:'toi' },
+  jc:   { ref:"Jacques 4:8", f:["Approchez-vous de Dieu,", "et il s'approchera de vous."], lit:'toi' }
+};
+/* questions simplifiées et leur aide (partie C) */
+const Q = {
+  q1:["Comment s'appelle Dieu ? Comment sait-on qu'il veut qu'on le sache ?", "Combien de fois a-t-il fait écrire son nom dans la Bible ?"],
+  q2:["Qu'est-ce que la Bible t'apprend sur Jéhovah ?", "Pourquoi lui seul est le vrai Dieu ? Regarde tes quatre cartes."],
+  q3a:["Quelle différence entre un titre de Dieu et son nom ?", "« Commandant », c'est ton titre dans le jeu. Et ton nom ?"],
+  q3b:["Qui est « le Dieu des dieux » et « le Seigneur des seigneurs » ?", "Regarde le verset 1 : qui remercie-t-on ?"],
+  q4a:["Jéhovah veut-il qu'on connaisse son nom ? Pourquoi tu penses ça ?", "Pense aux 7 000 fois."],
+  q4b:["Pourquoi c'est important de dire le nom de Jéhovah ?", "Relis Romains 10:13 : que se passe-t-il pour ceux qui l'appellent ?"],
+  q4c:["Qu'est-ce que tu ressens quand quelqu'un se rappelle ton nom ?", "Et quand on t'oublie, ou qu'on se trompe de prénom ?"],
+  q4d:["Et Jéhovah, que ressent-il quand tu dis son nom ?", "Il n'y a pas de mauvaise réponse : dis ce que tu penses."],
+  q5a:["Dans la vidéo, comment Soten a réagi en apprenant le nom ?", "Qu'est-ce qu'elle a ressenti ?"],
+  q5b:["Qu'est-ce que Jéhovah t'invite à faire ?", "Relis le début : « Approchez-vous de Dieu… »"],
+  q5c:["Pourquoi connaître son nom t'aide à devenir son ami ?", "Tu peux être l'ami de quelqu'un sans savoir son nom ?"],
+  oep1:["Tu crois que le nom de Dieu est Jéhovah ?", "Pourquoi ? Pense au signal du niveau 1."],
+  oep2:["Comment prouverais-tu que Dieu veut qu'on dise son nom ?", "Un seul verset suffit : lequel choisirais-tu ?"],
+  r1:["Pourquoi Jéhovah est différent de tous les autres dieux ?", "Pense aux cartes de l'observatoire."],
+  r2:["Pourquoi dire le nom de Dieu ?", "Pense à Romains 10:13, et à l'ami."],
+  r3:["Qu'est-ce qui montre que Jéhovah veut être ton ami ?", "Pense à l'arrimage : qui s'approche ?"],
+  sec:["La dernière fois, tu as emporté une question : « Dieu », c'est un titre. Quel est son vrai nom ? Qu'est-ce que tu as trouvé ?", "Alors devine. Et si tu sais pourquoi « Dieu » n'est pas un nom, dis-le aussi."]
+};
+const COEUR = {
+  h0:"Aujourd'hui, on va connaître quelqu'un.",
+  h1:"Il te dit son nom, comme un ami qui se présente.",
+  h2:"Les étoiles, la terre, et toi : il a voulu que vous existiez.",
+  h3:"Trois fois : son amour ne s'arrête jamais.",
+  h4:"Il t'a donné son nom pour que tu puisses l'appeler.",
+  h5:"Tu fais un pas, il en fait un."
+};
+const PHR = {
+  nom:{ hud:"Son nom", t:"Son nom veut dire « Il fait devenir », d'après des biblistes.", petite:true },
+  ami:{ hud:"Arrimage", t:"Pour être ami avec quelqu'un, il faut au moins connaître son nom." },
+  oep:{ hud:"On entend parfois", t:"Certains disent : il n'y a qu'un Dieu, alors son nom, peu importe." }
+};
+const C7000 = "Dans la Bible, il a fait écrire son nom plus de 7 000 fois !";
+const ENBREF = "Jéhovah est le nom du seul vrai Dieu. Il veut qu'on connaisse et qu'on utilise son nom pour qu'on devienne son ami.";
+const OBJECTIF = "Utiliser le nom de Dieu, Jéhovah, quand je parle de lui.";
+const M5 = ["Mission 5 : la Bible, message de Dieu.", "Des hommes l'ont écrite. Pourquoi dit-on que Dieu est son Auteur ?"];
+const TRI_FIN = "Dieu a de nombreux titres, mais il n'a qu'un seul nom";
+const OBS = [
+  { q:"« le Très-Haut sur toute la terre »", pic:'q1', v:'ps83' },
+  { q:"le « Tout-Puissant » : « il a le pouvoir de faire ce qu'il veut »", pic:'q2', v:'re8' },
+  { q:"il a « créé toutes choses » : l'univers et toute vie sur terre", pic:'q3', v:'re11' },
+  { q:"« le seul à avoir toujours existé, et il existera toujours »", pic:'q4', v:'ps90' }
+];
+const MOTS = [
+  { w:"Dieu", r:"Psaume 136:2" }, { w:"Seigneur", r:"Psaume 136:3" }, { w:"Très-Haut", r:"Psaume 83:18" },
+  { w:"Tout-Puissant", r:"Révélation 4:8" }, { w:"Créateur", r:"Isaïe 42:5" }, { w:"Jéhovah", r:"Isaïe 42:8", nom:true }
+];
+const VID = { v041:{ titre:"Beaucoup de titres, mais un seul nom", d:"0:41" }, v311:{ titre:"Dieu a-t-il un nom ? (extrait)", d:"3:11" } };
+const NIV = { 1:{ nom:'CONTACT', ic:'lv1' }, 2:{ nom:'OBSERVATOIRE', ic:'lv2' }, 3:{ nom:'DÉCODEUR', ic:'lv3' }, 4:{ nom:'TRANSMISSION', ic:'lv4' }, 5:{ nom:'ARRIMAGE', ic:'lv5' } };
+
+
+
+const IMG = () => '';
+const LIVRE = `<p class="livre">${ico('i-livre')}Regarde l'image de la leçon 4 dans ton livre.</p>`;
+const pres = () => '';
+const PLEIN = {}, NOTE_V = {}, LIVRE_Q = {}, NOTE_Q = {};
+const AIDE_BTN = 'Un indice ?';
+const AIDE_PRE = 'Indice : ';
+const LECTURE = () => 'À toi de lire';
+const LECTEUR0 = () => 'moi';
+const CLE = 'operation-signal-famille-v1', CLE_THEME = 'operationSignal.famille.theme';
+
+
+/* ===================== ÉTAT ===================== */
+function melange(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a }
+const neuf = () => ({ ecran:'accueil', badge:false, nom:'', secret:'', scelle:false, pos:0, faites:[], st:[false,false,false,false,false],
+  et:{1:0,2:0,3:0,4:0,5:0}, dec1:false, c7000:false, oA:melange([0,1,2,3]), oV:melange([0,1,2,3]), ok:[],
+  tri:{ ordre:melange([0,1,2,3,4,5]), i:0, titre:[], nom:null }, secretOuvert:false, verdictSecret:null, vid5:null, dock:false,
+  alt:{}, constel:false, m5:0, boite:[] });
+let S;
+try{ S = JSON.parse(localStorage.getItem(CLE)) || neuf() }catch(e){ S = neuf() }
+function save(){ try{ localStorage.setItem(CLE, JSON.stringify(S)) }catch(e){} }
+
+/* ===================== DÉCOR : étoiles fixes, posées une fois (elles ne scintillent pas) ===================== */
+(function(){
+  let s = 20261105; const r = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const champ = (n, rmin, rmax) => Array.from({length:n}, () => `<circle cx="${(r()*1000).toFixed(0)}" cy="${(r()*1000).toFixed(0)}" r="${(rmin + r()*(rmax-rmin)).toFixed(1)}"/>`).join('');
+  $('champ1').innerHTML = champ(90, 1, 2.2); $('champ2').innerHTML = champ(36, 2, 3.6);
+})();
+function galaxie(){
+  return `<svg viewBox="0 0 370 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <rect width="370" height="100" fill="#0E1630"/>
+    <ellipse cx="190" cy="50" rx="120" ry="40" fill="#2A3470" opacity=".55"/>
+    <g transform="rotate(-14 190 50)"><ellipse cx="190" cy="50" rx="78" ry="20" fill="#5D4FB0" opacity=".45"/>
+    <path d="M190 50 C 214 34 250 40 262 52 M190 50 C 166 66 130 60 118 48" fill="none" stroke="#B9A8F5" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+    <path d="M190 50 C 206 40 226 44 232 52 M190 50 C 174 60 154 56 148 48" fill="none" stroke="#E6DDFF" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+    <ellipse cx="190" cy="50" rx="13" ry="8" fill="#FFF3D0"/></g>
+    <g fill="#FFFFFF">${[[24,20,1.3],[60,70,1],[92,30,1.6],[300,22,1.2],[330,74,1.5],[350,40,1],[40,88,1.1],[270,86,1.3],[120,84,.9],[250,14,1]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>
+    <circle cx="74" cy="40" r="7" fill="#C7D4F0" opacity=".5"/></svg>`;
+}
+
+/* ===================== VIE ET MOUVEMENT ===================== */
+document.addEventListener('pointerdown', ev => {
+  const b = ev.target.closest('button'); if (!b || b.disabled) return;
+  if (!b.classList.contains('carte') && b.id !== 'allumer') son('pop');
+  b.classList.remove('rebond'); void b.offsetWidth; b.classList.add('rebond');
+  b.addEventListener('animationend', () => b.classList.remove('rebond'), { once:true });
+  if (calme() || b.classList.contains('carte')) return;
+  if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
+  b.style.overflow = 'hidden';
+  const r = b.getBoundingClientRect(), h = document.createElement('span');
+  h.className = 'halo-t'; h.style.left = (ev.clientX - r.left) + 'px'; h.style.top = (ev.clientY - r.top) + 'px';
+  b.appendChild(h); setTimeout(() => h.remove(), 750);
+}, { passive:true });
+function celebrer(el, n=14, verte=false){
+  if (!el || calme()) return;
+  const r = el.getBoundingClientRect();
+  for (let i=0; i<n; i++){
+    const p = document.createElement('span');
+    p.className = 'particule' + (verte ? ' verte' : '');
+    p.style.left = (r.left + window.scrollX + r.width*(.15 + Math.random()*.7)) + 'px';
+    p.style.top = (r.top + window.scrollY + r.height*(.3 + Math.random()*.5)) + 'px';
+    p.style.setProperty('--dx', (Math.random()*120 - 60).toFixed(0) + 'px');
+    p.style.setProperty('--dy', (-50 - Math.random()*90).toFixed(0) + 'px');
+    p.style.animationDelay = (Math.random()*.6).toFixed(2) + 's';
+    document.body.appendChild(p); setTimeout(() => p.remove(), 3000);
+  }
+}
+function briller(el){ if (!el) return; el.classList.remove('brille'); void el.offsetWidth; el.classList.add('brille'); setTimeout(() => el.classList.remove('brille'), 1100) }
+const GLYPHES = '◇◆○●□■△▽◁▷✦✧⬡⬢';
+const brouille = t => Array.from(t).map(c => c === ' ' ? ' ' : GLYPHES[Math.floor(Math.random()*GLYPHES.length)]).join('');
+/* décodage lettre par lettre, en une seconde au plus */
+function decoder(el, texte, fin){
+  if (calme()){ el.textContent = texte; fin && fin(); return }
+  const L = Array.from(texte), D = 1000, t0 = performance.now(); let fait = false;
+  const finir = () => { if (fait) return; fait = true; el.textContent = texte; fin && fin() };
+  (function pas(t){ if (fait) return; const k = Math.min(1, (t - t0)/D), n = Math.floor(k*L.length);
+    el.textContent = L.slice(0,n).join('') + brouille(L.slice(n).join(''));
+    if (k < 1) requestAnimationFrame(pas); else finir() })(t0);
+  setTimeout(finir, D + 80);
+}
+
+/* ===================== NAVIGATION ===================== */
+function majMini(){ $('miniNom').innerHTML = S.nom ? '<span class="cdt">Commandant </span>' + esc(S.nom) : 'Commandant' }
+function aller(e){ son('etape'); S.ecran = e; save(); render(); window.scrollTo(0,0) }
+function render(){
+  $('miniBadge').classList.toggle('on', S.badge);
+  majMini();
+  const e = S.ecran;
+  if (e==='accueil') return rAccueil();
+  if (e==='badge') return rBadge();
+  if (e==='secret') return rSecret();
+  if (e==='coeur0') return rCoeur0();
+  if (e==='plateau') return rPlateau();
+  if (e.startsWith('niv')) return rNiv(+e.slice(3));
+}
+
+function rAccueil(){
+  app.innerHTML = `<section class="screen centre">
+    <h1 class="titre">Opération SIGNAL</h1>
+    <p class="sous">Qui a fait l'univers ?</p>
+    <div class="hublot">${galaxie()}<span class="pulse"></span></div>
+    ${LIVRE}
+    <button class="big" id="embarquer">Embarquer${ico('i-fleche')}</button>
+    
+  </section>`;
+  $('embarquer').onclick = () => aller('badge');
+}
+
+function rBadge(){
+  app.innerHTML = `<section class="screen centre">
+    <div class="badge" id="badge"><div class="b-ent">Station SIGNAL · Carte de bord</div>
+      <div class="b-corps"><svg class="b-av" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-avatar" width="64" height="64"/></svg>
+        <div style="min-width:0"><p class="b-lig">Nom de commandant</p><p class="b-val" id="valNom">${esc(S.nom || '— — —')}</p></div></div>
+      <div class="tampon ${S.badge?'on':''}" id="tampon">Commandant à bord</div></div>
+    <div class="panneau" id="saisie" style="max-width:520px" ${S.badge?'hidden':''}>
+      <p class="hud" style="text-align:left;margin-bottom:14px">Choisis ton nom de commandant</p>
+      <input class="champ" id="champNom" type="text" maxlength="18" autocomplete="off" aria-label="Nom de commandant" value="${esc(S.nom)}">
+      <div class="row" style="margin-top:16px;justify-content:flex-start"><button class="btn" id="valider">Valider</button></div>
+    </div>
+    <p class="hud" id="orbite" ${S.badge?'':'hidden'}>Station SIGNAL en orbite.</p>
+    <button class="big" id="suite" ${S.badge?'':'hidden'}>Suite${ico('i-fleche')}</button>
+  </section>`;
+  $('champNom').oninput = e => { $('valNom').textContent = e.target.value.trim() || '— — —' };
+  $('valider').onclick = () => {
+    S.nom = $('champNom').value.trim(); S.badge = true; save(); document.activeElement.blur();
+    $('saisie').hidden = true; $('tampon').classList.add('on'); briller($('badge')); son('sceau');
+    majMini(); $('miniBadge').classList.add('on');
+    setTimeout(()=>{ celebrer($('tampon'), 12, true); $('orbite').hidden = false; $('suite').hidden = false }, calme()?0:900);
+  };
+  $('suite').onclick = () => aller('secret');
+}
+
+function aideHTML(r){ return r ? `<button class="aide-btn" data-aide>${AIDE_BTN}</button><p class="aide" hidden>${esc(AIDE_PRE + r)}</p>` : '' }
+function brancherAide(root=document){ root.querySelectorAll('[data-aide]').forEach(b => b.onclick = () => { b.nextElementSibling.hidden = false; b.hidden = true }) }
+
+function rSecret(){
+  app.innerHTML = `<section class="screen scene">
+    <div class="haut"><p class="hud">Signal crypté</p></div>
+    <div class="milieu">
+      ${S.scelle ? `<div class="crypto" id="crypto">${esc(brouille(S.secret))}</div>
+        <div class="verrou">${ico('i-cad')}<p class="hud" style="color:var(--violet-t)">Se décode au niveau 3</p></div>`
+      : `<div class="panneau"><p class="question">${esc(Q.sec[0])}</p>${aideHTML(Q.sec[1])}</div>
+        <textarea class="champ" id="champSecret" aria-label="Ta réponse">${esc(S.secret)}</textarea>
+        <button class="big violet" id="crypter">${ico('i-cad')}Crypter</button>`}
+    </div>
+    <div class="bas"><button class="btn leger" id="prec">${ico('i-retour')}Retour</button>
+      <button class="big" id="suite" ${S.scelle?'':'hidden'}>Suite${ico('i-fleche')}</button></div>
+    
+  </section>`;
+  brancherAide();
+  $('prec').onclick = () => aller('badge');
+  $('suite').onclick = () => aller('coeur0');
+  const c = $('crypter');
+  if (c) c.onclick = () => {
+    const v = $('champSecret').value.trim(); if (!v){ $('champSecret').focus(); return }
+    S.secret = v; S.scelle = true; save(); document.activeElement.blur(); son('sceau');
+    const m = document.querySelector('.milieu');
+    m.innerHTML = `<div class="crypto" id="crypto">${esc(v)}</div><div class="verrou" hidden id="verrou">${ico('i-cad')}<p class="hud" style="color:var(--violet-t)">Se décode au niveau 3</p></div>`;
+    const el = $('crypto');
+    if (calme()){ el.textContent = brouille(v) } else {
+      const L = Array.from(v), t0 = performance.now();
+      (function pas(t){ const k = Math.min(1,(t-t0)/1000), n = Math.floor(k*L.length);
+        el.textContent = brouille(L.slice(0,n).join('')) + L.slice(n).join(''); if (k<1) requestAnimationFrame(pas) })(t0);
+    }
+    setTimeout(()=>{ el.textContent = brouille(v); $('verrou').hidden = false; $('suite').hidden = false }, calme()?0:1050);
+  };
+  const a = $('ajL3');
+  if (a) a.onclick = () => { const t = $('champL3'), v = t.value.trim(); if (!v) return; S.boite.push({ c:'L3', q:v }); save(); t.value = '';
+    $('listeL3').insertAdjacentHTML('beforeend', `<li>${esc(v)}</li>`) };
+}
+
+function coeurHTML(k){ return `${ico('i-coeur','coeur')}<div class="panneau" style="text-align:center"><p class="phrase" style="font-size:clamp(24px,4vw,32px)">${esc(COEUR[k])}</p></div>` }
+function rCoeur0(){
+  app.innerHTML = `<section class="screen scene"><div class="haut"><p class="hud">Commandant à bord</p></div>
+    <div class="milieu">${coeurHTML('h0')}</div>
+    <div class="bas"><button class="btn leger" id="prec">${ico('i-retour')}Retour</button><button class="big" id="suite">La carte du ciel${ico('i-fleche')}</button></div></section>`;
+  $('prec').onclick = () => aller('secret'); $('suite').onclick = () => aller('plateau');
+}
+
+/* ===================== CARTE DU CIEL ===================== */
+const PTS = { 0:[150,262,0], 1:[52,228,17], 2:[150,190,17], 3:[52,150,17], 4:[150,110,17], 5:[100,50,22] };
+const LEGS = { 1:"M150 262 C 115 262, 82 236, 52 228", 2:"M52 228 C 100 228, 105 190, 150 190", 3:"M150 190 C 100 190, 100 150, 52 150",
+  4:"M52 150 C 100 150, 100 110, 150 110", 5:"M150 110 C 150 80, 100 84, 100 50" };
+const DOCK = n => n===0 ? [0,-15] : [PTS[n][2]*.8, PTS[n][2]*.8];
+function rPlateau(){
+  const noeud = n => { const [x,y,R] = PTS[n], on = S.st[n-1];
+    return `<g class="noeud ${on?'on':''}">
+      ${S.pos===n ? `<circle cx="${x}" cy="${y}" r="${R+7}" fill="none" style="stroke:var(--or-t)" stroke-width="1.3" stroke-dasharray="2.5 2.5"/>` : ''}
+      <path class="e" d="${etoileD(x, y+1, R, R*.48)}" style="fill:${on?'url(#g-or)':'var(--off)'};stroke:${on?'#B57A00':'var(--offl)'}" stroke-width="1.4" stroke-linejoin="round" ${on?'':'stroke-dasharray="2.4 2"'}/>
+      <text x="${x}" y="${y+4.5}" text-anchor="middle" font-family="Verdana, sans-serif" font-size="9" font-weight="700" style="fill:${on?'#5A3E00':'var(--txt2)'}">${n}</text>
+      <text x="${x}" y="${y+R+11}" text-anchor="middle" font-family="${getComputedStyle(document.documentElement).getPropertyValue('--titre-f').replace(/"/g,"'")}" font-size="7.6" font-weight="700" letter-spacing=".5" style="fill:var(--txt)">${NIV[n].nom}</text></g>` };
+  const [px,py] = PTS[S.pos], [ox,oy] = DOCK(S.pos), toutes = Object.values(LEGS).join(' ');
+  app.innerHTML = `<section class="screen plateau">
+    <div class="board"><svg viewBox="0 0 200 290" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte du ciel : 5 niveaux">
+      <path d="${toutes}" fill="none" style="stroke:var(--route)" stroke-width="7" stroke-linecap="round"/>
+      <path d="${toutes}" fill="none" style="stroke:var(--glace-t)" stroke-width="1.1" stroke-dasharray="2.5 3" stroke-linecap="round" opacity=".7"/>
+      ${S.pos>0 ? `<path d="${Object.entries(LEGS).filter(([n])=>+n<=S.pos).map(([,d])=>d).join(' ')}" fill="none" stroke="#E8B84A" stroke-width="4" stroke-linecap="round"/>` : ''}
+      ${Object.entries(LEGS).map(([n,d])=>`<path id="leg${n}" d="${d}" fill="none" stroke="none"/>`).join('')}
+      <use href="#i-station" x="138" y="250" width="24" height="24"/>
+      <text x="150" y="284" text-anchor="middle" font-family="Verdana, sans-serif" font-size="7" style="fill:var(--txt2)">Départ</text>
+      ${[1,2,3,4,5].map(noeud).join('')}
+      <g id="pion" transform="translate(${px+ox} ${py+oy})"><use href="#i-vaisseau" x="-11" y="-11" width="22" height="22"/></g>
+    </svg></div>
+    <div class="side">
+      ${S.pos<5 ? `<button class="big" id="suivant">Niveau suivant${ico('i-fleche')}</button>` : `<button class="big or" id="rouvrir">Revoir le niveau 5</button>`}
+      ${S.pos>0 && S.pos<5 ? `<button class="btn" id="revoir">Revoir le niveau ${S.pos}</button>` : ''}
+      <p class="etat">${S.pos===0 ? 'Départ · 5 niveaux' : S.pos<5 ? `Niveau ${S.pos}/5 · encore ${5-S.pos}` : 'Constellation complète'}</p>
+      ${S.scelle && !S.secretOuvert ? `<p class="mini-verrou">${ico('i-cad')}Signal crypté · se décode au niveau 3</p>` : ''}
+    </div></section>`;
+  const b = $('suivant'); if (b) b.onclick = () => { b.disabled = true; avancer() };
+  const r = $('rouvrir'); if (r) r.onclick = () => { if (S.faites.includes(5)) S.et[5] = 0; aller('niv5') };
+  const v = $('revoir'); if (v) v.onclick = () => { S.et[S.pos] = 0; aller('niv'+S.pos) };
+  const neuves = S.st.map((o,i)=>o && !(S.vues||[])[i]);
+  neuves.forEach((nv,i) => { if (nv){ const g = document.querySelectorAll('.noeud')[i]; setTimeout(()=>{ celebrer(g, 10); son('sceau') }, 500) } });
+  S.vues = S.st.slice(); save();
+}
+function avancer(){
+  const de = S.pos, a = S.pos+1, leg = $('leg'+a), pion = $('pion'), L = leg.getTotalLength();
+  const [ox0,oy0] = DOCK(de), [ox1,oy1] = DOCK(a), D = calme() ? 1 : 1000;
+  const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2, t0 = performance.now();
+  function pas(now){
+    const t = Math.min(1,(now-t0)/D), k = ease(t), p = leg.getPointAtLength(k*L);
+    pion.setAttribute('transform', `translate(${p.x+ox0+(ox1-ox0)*k} ${p.y+oy0+(oy1-oy0)*k})`);
+    if (t<1) requestAnimationFrame(pas);
+    else { S.pos = a; S.et[a] = 0; save(); setTimeout(()=>aller('niv'+a), calme()?0:500) }
+  }
+  requestAnimationFrame(pas);
+}
+
+/* ===================== NIVEAUX : une suite d'écrans, une chose à lire par écran ===================== */
+function etapes(n){
+  switch(n){
+    case 1: return [{t:'titre'},{t:'v',k:'ch'},{t:'q',k:'q1'},{t:'v',k:'is8'},{t:'decode'},{t:'c7000'},{t:'phrase',k:'nom'},{t:'v',k:'ex'},{t:'etoile'},{t:'coeur',k:'h1'},{t:'tour'},{t:'fin'}];
+    case 2: return [{t:'titre'},{t:'q',k:'q2'},{t:'obs'},{t:'etoile'},{t:'coeur',k:'h2'},{t:'tour'},{t:'fin'}];
+    case 3: return [{t:'titre'},{t:'video',k:'v041'},{t:'q',k:'q3a'},{t:'tri'},{t:'v',k:'ps136'},{t:'q',k:'q3b'},{t:'secret'},{t:'etoile'},{t:'coeur',k:'h3'},{t:'tour'},{t:'fin',phrase:'Encore deux niveaux.'}];
+    case 4: return [{t:'titre'},{t:'video',k:'v311'},{t:'q',k:'q4a'},{t:'v',k:'rm'},{t:'q',k:'q4b'},{t:'q',k:'q4c'},{t:'q',k:'q4d'},{t:'etoile'},{t:'coeur',k:'h4'},{t:'tour'},{t:'fin'}];
+    case 5: { const a = [{t:'titre'},{t:'vid5'}]; if (S.vid5 === 'oui') a.push({t:'q',k:'q5a'});
+      a.push({t:'phrase',k:'ami'},{t:'v',k:'jc'},{t:'q',k:'q5b'},{t:'q',k:'q5c'},{t:'dock'},{t:'phrase',k:'oep'},{t:'q',k:'oep2',alt:['oep2','oep1']},
+        {t:'constel'},{t:'enbref'},{t:'q',k:'r3',alt:['r3','r1','r2'],hud:'Une question de révision'},{t:'objectif'},{t:'m5'},{t:'boite'},{t:'coeur',k:'h5'},{t:'fin'});
+      return a }
+  }
+}
+let N = 1, I = 0;
+function rNiv(n){
+  N = n; const L = etapes(n); I = Math.max(0, Math.min(S.et[n]||0, L.length-1)); const e = L[I];
+  const R = RENDU[e.t](n, e);
+  app.innerHTML = `<section class="screen scene">
+    <div class="haut"><p class="hud">Niveau ${n}/5 · ${NIV[n].nom}</p><div class="pas" aria-hidden="true">${L.map((_,j)=>`<i class="${j<I?'fait':j===I?'ici':''}"></i>`).join('')}</div></div>
+    <div class="milieu">${R.html}</div>
+    <div class="bas"><button class="btn leger" id="prec">${ico('i-retour')}${I>0?'Retour':'Carte du ciel'}</button>
+      
+      ${e.t==='fin' ? '' : `<button class="big" id="suite" ${R.pret===false?'hidden':''}>Suite${ico('i-fleche')}</button>`}</div>
+    ${pres(R.pres)}
+  </section>`;
+  brancherAide();
+  $('prec').onclick = () => { if (I>0){ S.et[n] = I-1; aller('niv'+n) } else aller('plateau') };
+  const s = $('suite'); if (s) s.onclick = () => { S.et[n] = I+1; aller('niv'+n) };
+  const p = $('passer'); if (p) p.onclick = () => { S.et[n] = I+1; aller('niv'+n) };
+  R.after && R.after();
+}
+function pret(){ const s = $('suite'); if (s) s.hidden = false; const p = $('passer'); if (p) p.hidden = true }
+
+/* bloc verset : un morceau à la fois, « Lis la suite » pour le second */
+function versetHTML(k){
+  const v = V[k];
+  return `<div class="lecteur"><p class="hud">${esc(LECTURE(v))}</p></div>
+    <div class="lire"><p class="ref">${esc(v.ref)}</p><p class="frag" id="frag">« ${esc(v.f[0])} »</p>${v.refrain ? `<p class="refrain" id="refrain" hidden>${esc(v.refrain)}</p>` : ''}</div>
+    <div class="row">${v.f.length>1 ? `<button class="btn" id="lisSuite">Lis la suite</button>` : ''}
+      <button class="btn leger" id="atoi"><span class="lecteur">${ico('i-lecteur')}<b id="lecMot">${LECTEUR0(v)}</b></span>${LECTEUR0(v)==='moi' ? 'À toi' : 'À moi'}</button></div>`;
+}
+function brancherVerset(k){
+  const v = V[k]; let m = 0;
+  const b = $('lisSuite');
+  if (b) b.onclick = () => { m = 1 - m; const f = $('frag');
+    f.innerHTML = '« ' + esc(v.f[m]).replace(/\n/g, '<br>') + ' »'; f.style.animation = 'none'; void f.offsetWidth; f.style.animation = '';
+    b.textContent = m ? 'Relire le début' : 'Lis la suite';
+    const r = $('refrain'); if (r && m === 1) r.hidden = false; };
+  const a = $('atoi');
+  if (a) a.onclick = () => { const w = $('lecMot'), toi = w.textContent === 'moi'; w.textContent = toi ? 'toi' : 'moi';
+    a.lastChild.textContent = toi ? 'À moi' : 'À toi' };
+}
+const presVerset = k => (NOTE_V[k] || PLEIN[k]) ? `<p>${NOTE_V[k] || ''}</p><p><b>${esc(V[k].ref)}</b> ${esc(PLEIN[k] || '')}</p>` : '';
+
+function etoileHTML(n, on){
+  return `<svg class="g-etoile ${on?'on':''}" id="gEtoile" viewBox="0 0 120 120" aria-label="Étoile ${n}">
+    <circle cx="60" cy="60" r="58" fill="url(#g-halo)" opacity="${on?1:0}" style="transition:opacity 1s ease" id="gHalo"/>
+    <path class="e" d="${etoileD(60, 63, 48, 22)}" style="fill:${on?'url(#g-or)':'var(--off)'};stroke:${on?'#B57A00':'var(--offl)'}" stroke-width="2.4" stroke-linejoin="round" ${on?'':'stroke-dasharray="5 4"'}/>
+    <text x="60" y="72" text-anchor="middle" font-family="Verdana, sans-serif" font-size="24" font-weight="700" style="fill:${on?'#5A3E00':'var(--txt2)'}">${n}</text></svg>`;
+}
+
+const RENDU = {
+  titre(n){
+    const html = n===2
+      ? `<div class="rond">${galaxie()}</div><p class="nom-niv">${NIV[n].nom}</p>${LIVRE}`
+      : `<div class="rond ${n===4?'emet':''}">${ico(NIV[n].ic,'pic')}</div><p class="nom-niv">${NIV[n].nom}</p>${n===1?'<p class="hud">Signal capté</p>':''}`;
+    return { html, pres: '' };
+  },
+  v(n, e){ return { html: versetHTML(e.k), pres: presVerset(e.k), after: () => brancherVerset(e.k) } },
+  q(n, e){
+    const liste = e.alt || [e.k]; const k = liste[(S.alt[n+'-'+I] || 0) % liste.length], q = Q[k];
+    const html = `${k==='q5a' ? IMG('134') : ''}<p class="hud">${e.hud || (e.k==='oep2' ? 'On entend parfois' : 'La question')}</p>
+      <div class="panneau"><p class="question">${esc(q[0])}</p>${aideHTML(q[1])}</div>
+      ${liste.length>1 ? `<button class="btn" id="autreQ">Une autre question</button>` : ''}`;
+    return { html, pres: '',
+      after: () => { const b = $('autreQ'); if (b) b.onclick = () => { S.alt[n+'-'+I] = ((S.alt[n+'-'+I] || 0) + 1) % liste.length; save(); rNiv(n) } } };
+  },
+  phrase(n, e){ const p = PHR[e.k];
+    return { html: `<p class="hud">${esc(p.hud)}</p><div class="panneau"><p class="phrase ${p.petite?'petite':''}">${esc(p.t)}</p></div>`,
+      pres: '' } },
+  video(n, e){ const d = VID[e.k];
+    return { html: `${e.k==='v311' ? IMG('129','vignette') : ''}<div class="panneau video">${ico('i-video')}<div style="min-width:0">
+        
+        <p class="vt">Vidéo · ${d.d} · son bas</p><p class="phrase" style="font-size:22px">Regarde « ${esc(d.titre)} » dans JW Library.</p></div></div>`,
+      pres: '' } },
+  decode(){
+    const txt = "Je suis Jéhovah. C'est là mon nom";
+    return { pret: S.dec1,
+      html: `<p class="hud" id="decEtat">${S.dec1 ? 'Signal confirmé' : 'Signal capté'}</p>
+        <div class="lire"><p class="frag" id="decTxt" style="animation:none">${esc(S.dec1 ? txt : brouille(txt))}</p></div>
+        <button class="big or" id="decoder" ${S.dec1?'hidden':''}>Décoder le signal</button>`,
+      after: () => { $('decoder').onclick = () => { $('decoder').hidden = true; $('decEtat').textContent = 'Décodage en cours';
+        decoder($('decTxt'), txt, () => { S.dec1 = true; save(); $('decEtat').textContent = 'Signal confirmé'; son('paire'); celebrer($('decTxt'), 12); pret() }) } } };
+  },
+  c7000(){
+    return { pret: S.c7000,
+      html: `<button class="carte A ${S.c7000?'ouverte':''}" id="c7" style="width:min(80vw,400px,46vh);aspect-ratio:4/5" aria-label="Carte 7 000">
+        <div class="in"><div class="f dos">${ico('i-livre7')}<span class="k" style="font-size:22px">7 000</span></div>
+        <div class="f face" style="justify-content:center;gap:16px;padding:18px">${ico('i-livre7')}
+          <p class="t" style="font-size:clamp(19px,3.4vw,24px);line-height:1.55">${esc(C7000)}</p></div></div></button>
+        <p class="hud" id="c7aide" ${S.c7000?'hidden':''}>Touche la carte</p>${S.c7000 ? LIVRE : ''}`,
+      pres: '',
+      after: () => { $('c7').onclick = () => { if (S.c7000) return; S.c7000 = true; save(); son('carte'); $('c7').classList.add('ouverte'); $('c7aide').hidden = true;
+        setTimeout(()=>{ celebrer($('c7'), 14); pret() }, calme()?0:900) } } };
+  },
+  etoile(n){
+    const on = S.st[n-1];
+    return { pret: on,
+      html: `${etoileHTML(n, on)}<p class="hud" id="etLab" ${on?'':'hidden'} style="color:var(--or-t)">Étoile ${n} allumée</p>
+        ${n===4 ? `<div class="panneau" id="transm" ${on?'':'hidden'}><p class="phrase">Transmission : faire appel au nom de Jéhovah</p></div>` : ''}
+        <button class="big or" id="allumer" ${on?'hidden':''}>Allumer l'étoile ${n}</button>`,
+      after: () => { $('allumer').onclick = () => { S.st[n-1] = true; save(); $('allumer').hidden = true;
+        const g = $('gEtoile'); g.outerHTML = etoileHTML(n, true); son('sceau'); celebrer($('gEtoile'), 18);
+        $('etLab').hidden = false; const t = $('transm'); if (t) t.hidden = false; pret() } } };
+  },
+  coeur(n, e){ return { html: coeurHTML(e.k) } },
+  tour(n){
+    const mes = S.boite.filter(x => x.c === n);
+    return { html: `<p class="hud">Tour du commandant</p>${ico('i-boite','coeur')}
+        <div class="panneau"><p class="phrase" style="margin-bottom:16px">Une question ? Range-la dans ta boîte.</p>
+        <textarea class="champ" id="tq" aria-label="Ta question"></textarea>
+        <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn" id="ranger">Ranger dans la boîte</button></div>
+        <ul class="liste" id="tl">${mes.map(x=>`<li>${esc(x.q)}</li>`).join('')}</ul></div>`,
+      pres: '',
+      after: () => { $('ranger').onclick = () => { const t = $('tq'), v = t.value.trim(); if (!v) return; S.boite.push({ c:n, q:v }); save(); t.value = '';
+        $('tl').insertAdjacentHTML('beforeend', `<li>${esc(v)}</li>`) } } };
+  },
+  fin(n, e){
+    return { html: `${etoileHTML(n, S.st[n-1])}${e.phrase ? `<div class="panneau" style="text-align:center"><p class="phrase">${esc(e.phrase)}</p></div>` : ''}
+        <button class="big" id="retour">${n===5 ? 'Revoir la carte du ciel' : 'Retour à la carte du ciel'}${ico('i-fleche')}</button>`,
+      after: () => { $('retour').onclick = () => { if (!S.faites.includes(n)) S.faites.push(n); aller('plateau') } } };
+  },
+  obs(n){ return { pret: S.ok.length === 4, html: obsHTML(), after: brancherObs } },
+  tri(){ return { pret: S.tri.i >= 6, html: `<p class="hud" id="triEtat">${S.tri.i>=6 ? 'Signal confirmé' : 'Glisse la carte dans le bon tiroir.'}</p><div class="tri" id="tri"></div>`, after: majTri } },
+  secret(){
+    const ouvert = S.secretOuvert;
+    return { pret: !!S.verdictSecret || !S.scelle,
+      html: !S.scelle ? `<div class="panneau"><p class="phrase">Pas de signal crypté cette fois.</p></div>` :
+        `<p class="hud" id="secEtat" style="color:var(--violet-t)">${ouvert ? 'Signal décodé' : 'Signal crypté'}</p>
+        <div class="crypto ${ouvert?'clair':''}" id="crypto">${esc(ouvert ? S.secret : brouille(S.secret))}</div>
+        <button class="big or" id="decSecret" ${ouvert?'hidden':''}>Décoder le SIGNAL CRYPTÉ</button>
+        <div id="secQ" ${ouvert?'':'hidden'} style="width:100%;display:flex;flex-direction:column;align-items:center;gap:18px">
+          <p class="hud" id="secMsg" style="font-size:22px;color:var(--vert-t)">${S.verdictSecret==='oui' ? 'Décodage confirmé' : S.verdictSecret==='auj' ? "Maintenant, tu l'as décodé toi-même." : 'Tu avais trouvé ?'}</p>
+          <div class="row"><button class="btn ${S.verdictSecret==='oui'?'on':''}" id="vOui">Décodage confirmé ✔</button><button class="btn ${S.verdictSecret==='auj'?'on':''}" id="vAuj">Décodé aujourd'hui ✔</button></div></div>`,
+      pres: '',
+      after: () => {
+        const d = $('decSecret'); if (!d) return;
+        d.onclick = () => { d.hidden = true; $('secEtat').textContent = 'Décodage en cours'; const c = $('crypto');
+          decoder(c, S.secret, () => { c.classList.add('clair'); S.secretOuvert = true; save(); $('secEtat').textContent = 'Signal décodé'; son('paire'); $('secQ').hidden = false }) };
+        const choix = (v, msg) => { S.verdictSecret = v; save(); $('secMsg').textContent = msg; $('vOui').classList.toggle('on', v==='oui'); $('vAuj').classList.toggle('on', v==='auj');
+          celebrer($('crypto'), 12, true); pret() };
+        $('vOui').onclick = () => choix('oui', 'Décodage confirmé');
+        $('vAuj').onclick = () => choix('auj', "Maintenant, tu l'as décodé toi-même.");
+      } };
+  },
+  vid5(){
+    return { pret: !!S.vid5,
+      html: `<div class="panneau video">${ico('i-video')}<div style="min-width:0"><p class="vt">Vidéo · 8:18</p>
+        <p class="phrase" style="font-size:22px">As-tu regardé « Ma quête du vrai Dieu » ?</p></div></div>
+        <div class="row"><button class="btn ${S.vid5==='oui'?'on':''}" id="v5oui">Oui</button><button class="btn ${S.vid5==='non'?'on':''}" id="v5non">Non</button></div>`,
+      pres: '',
+      after: () => { const ch = v => { S.vid5 = v; save(); $('v5oui').classList.toggle('on', v==='oui'); $('v5non').classList.toggle('on', v==='non'); pret() };
+        $('v5oui').onclick = () => ch('oui'); $('v5non').onclick = () => ch('non') } };
+  },
+  dock(){
+    const ok = S.dock;
+    return { pret: ok,
+      html: `<p class="hud" id="dkEtat">${ok ? 'Arrimage réussi' : 'Toucher pour arrimer'}</p>
+        <div class="ciel"><svg class="dock ${ok?'pas1 pas2 ok':''}" id="dock" viewBox="0 0 320 150" aria-label="Arrimage">
+          <g fill="#FFFFFF" opacity=".75">${[[20,20,1.2],[70,120,1],[150,24,1.4],[200,130,1],[290,30,1.2],[250,110,.9],[110,60,.8]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>
+          <g class="vais"><use href="#i-vaisseau" x="22" y="51" width="60" height="48"/></g>
+          <g class="stat"><circle cx="246" cy="75" r="44" fill="url(#g-halo)"/><rect x="210" y="45" width="66" height="60" rx="14" fill="url(#g-station)" stroke="#8A5A00" stroke-width="2"/>
+            <rect x="276" y="62" width="30" height="26" rx="4" fill="#7FA6D8" stroke="#1B2340" stroke-width="2"/><circle cx="243" cy="75" r="9" fill="#FFFFFF" stroke="#B57A00" stroke-width="2"/></g>
+          <g class="joint"><circle cx="146" cy="75" r="16" fill="none" stroke="#86DDBD" stroke-width="3"/><circle cx="146" cy="75" r="26" fill="none" stroke="#86DDBD" stroke-width="1.5" opacity=".6"/></g>
+        </svg></div>
+        <button class="big" id="arrimer" ${ok?'hidden':''}>Arrimer</button>`,
+      pres: '',
+      after: () => { const b = $('arrimer'); b.onclick = () => { b.hidden = true; const d = $('dock'); d.classList.add('pas1'); son('carte');
+        setTimeout(()=>{ d.classList.add('pas2'); son('carte') }, calme()?0:1100);
+        setTimeout(()=>{ d.classList.add('ok'); S.dock = true; save(); $('dkEtat').textContent = 'Arrimage réussi'; son('paire'); celebrer(d, 16, true); pret() }, calme()?0:2200) } } };
+  },
+  constel(){
+    const on = S.constel, P = [[40,160],[105,112],[175,140],[245,96],[315,150]];
+    const lettres = Array.from('JÉHOVAH');
+    return { pret: on,
+      html: `<p class="hud" id="csEtat">${on ? 'Constellation complète' : 'Cinq étoiles allumées'}</p>
+        <div class="ciel"><svg class="constel ${on?'on':''}" id="constel" viewBox="0 0 360 210" aria-label="Constellation : Jéhovah">
+          <g fill="#FFFFFF" opacity=".7">${[[18,30,1],[60,70,1.3],[140,20,1],[200,62,.9],[300,40,1.2],[340,90,1],[90,190,1],[220,196,1.1],[330,200,.9],[20,120,1]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>
+          <polyline class="lien" points="${P.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#FFE29A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>
+          ${P.map(([x,y])=>`<path class="st" d="${etoileD(x,y,11,5)}" fill="url(#g-or)" stroke="#B57A00" stroke-width="1"/>`).join('')}
+          <g font-family="${getComputedStyle(document.documentElement).getPropertyValue('--titre-f').replace(/"/g,"'")}" font-size="40" font-weight="800" text-anchor="middle" fill="url(#g-or)" stroke="#8A5A00" stroke-width=".6">
+          ${lettres.map((c,i)=>`<text class="lettre" x="${60+i*40}" y="62" style="animation-delay:${(1+i*0.12).toFixed(2)}s">${c}</text>`).join('')}</g>
+        </svg></div>
+        <button class="big or" id="relier" ${on?'hidden':''}>Relier les étoiles</button>`,
+      after: () => { const b = $('relier'); b.onclick = () => { b.hidden = true; S.constel = true; S.st[4] = true; save(); $('constel').classList.add('on'); son('victoire');
+        setTimeout(()=>{ $('csEtat').textContent = 'Constellation complète'; celebrer($('constel'), 26); pret() }, calme()?0:1900) } } };
+  },
+  enbref(){
+    return { html: `${IMG('121','haute')}<p class="hud">En bref</p><div class="lire"><p class="frag">${esc(ENBREF)}</p></div>${LIVRE}`,
+      pres: '' };
+  },
+  objectif(){
+    return { html: `<p class="hud">Mon objectif</p><div class="panneau"><p class="phrase">${esc(OBJECTIF)}</p>
+        ${S.vid5==='non' ? `<p class="phrase petite" style="margin-top:18px">Et cette semaine : la vidéo « Ma quête du vrai Dieu ».</p>` : ''}</div>`,
+      pres: '' };
+  },
+  m5(){
+    const etat = S.m5;
+    return { pret: etat >= 2,
+      html: `<p class="hud">Mission 5</p>
+        <button class="capbtn" id="cap" aria-label="Ouvrir la capsule Mission 5"><svg class="capsule ${etat?'ouverte':''}" id="capsule" viewBox="0 0 120 70" aria-hidden="true">
+          <g class="msg"><rect x="30" y="16" width="60" height="34" rx="3" fill="#FFF8E8" stroke="#1B2340" stroke-width="1.6"/><path d="M38 26 H82 M38 33 H82 M38 40 H70" stroke="#9AA6C2" stroke-width="2" stroke-linecap="round"/></g>
+          <rect x="8" y="30" width="104" height="34" rx="17" fill="#DDE8F7" stroke="#1B2340" stroke-width="2.4"/>
+          <g class="couv"><path d="M16 30 H104 A12 12 0 0 0 92 18 H28 A12 12 0 0 0 16 30 Z" fill="#B9CCE8" stroke="#1B2340" stroke-width="2.4" stroke-linejoin="round"/></g>
+          <g class="sceau-c"><circle cx="60" cy="40" r="9" fill="url(#g-or)" stroke="#8A5A00" stroke-width="1.2"/><path d="${etoileD(60,40.5,5.5,2.4)}" fill="#FFF3C4"/></g></svg></button>
+        <p class="hud" id="capAide" ${etat?'hidden':''}>Touche la capsule</p>
+        <div class="panneau" id="m5txt" ${etat?'':'hidden'}><p class="phrase" id="m5p">${esc(M5[Math.max(0, etat-1)])}</p></div>
+        <button class="btn" id="m5suite" ${etat===1?'':'hidden'}>La suite</button>`,
+      pres: '',
+      after: () => {
+        $('cap').onclick = () => { if (S.m5) return; S.m5 = 1; save(); son('carte'); $('capsule').classList.add('ouverte'); $('capAide').hidden = true;
+          setTimeout(()=>{ $('m5txt').hidden = false; $('m5p').textContent = M5[0]; $('m5suite').hidden = false; celebrer($('cap'), 12) }, calme()?0:900) };
+        $('m5suite').onclick = () => { S.m5 = 2; save(); $('m5p').textContent = M5[1]; $('m5suite').hidden = true; pret() };
+      } };
+  },
+  boite(){
+    return { html: `<p class="hud">Ta boîte à enquêtes</p>${ico('i-boite','coeur')}
+        <div class="panneau">${S.boite.length ? `<ul class="liste" style="margin-top:0" id="tl">${S.boite.map(x=>`<li>${esc(x.q)}</li>`).join('')}</ul>` : `<p class="phrase petite" id="vide">Ta boîte est vide pour l'instant.</p><ul class="liste" id="tl"></ul>`}
+        <textarea class="champ" id="tq" style="margin-top:16px" aria-label="Ajoute une question"></textarea>
+        <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn" id="ranger">Ranger dans la boîte</button></div></div>`,
+      pres: '',
+      after: () => { $('ranger').onclick = () => { const t = $('tq'), v = t.value.trim(); if (!v) return; S.boite.push({ c:5, q:v }); save(); t.value = '';
+        const vd = $('vide'); if (vd) vd.remove(); $('tl').insertAdjacentHTML('beforeend', `<li>${esc(v)}</li>`) } } };
+  }
+};
+
+/* ----- observatoire : 4 cartes QUI IL EST, 4 cartes VERSET ----- */
+function carteHTML(cls, dos, face, ouverte, ok, data){
+  return `<button class="carte ${cls} ${ouverte?'ouverte':''} ${ok?'ok':''}" ${data} aria-label="Carte"><div class="in"><div class="f dos">${dos}</div><div class="f face">${face}</div></div></button>`;
+}
+function obsHTML(){
+  const fini = S.ok.length === 4;
+  return `<p class="hud" id="obsEtat">${fini ? 'Signal confirmé' : 'Touche une carte Verset.'}</p>
+    <p class="rang-lab glace">Verset</p>
+    <div class="rang rv">${S.oV.map(i => { const ok = S.ok.includes(i), v = V[OBS[i].v];
+      return carteHTML('V', `${ico('c-rouleau')}<span class="k">Verset</span>`, `${ico('c-rouleau')}<p class="vr">${esc(v.ref)}</p><span class="conf">Signal confirmé</span>`, ok, ok, `data-v="${i}"`) }).join('')}</div>
+    <p class="rang-lab or">Qui il est</p>
+    <div class="rang">${S.oA.map(i => { const ok = S.ok.includes(i), c = OBS[i];
+      return carteHTML('A', `${ico('dos-A')}<span class="k">Qui il est</span>`, `${ico(c.pic)}<p class="t">${esc(c.q)}</p><span class="conf">Signal confirmé</span>`, ok, ok, `data-a="${i}"`) }).join('')}</div>`;
+}
+let selV = null, occupe = false;
+function brancherObs(){
+  selV = null; occupe = false;
+  document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.v; if (occupe || S.ok.includes(i)) return;
+    if (selV !== null && selV !== i) document.querySelector(`[data-v="${selV}"]`).classList.remove('ouverte');
+    selV = i; b.classList.add('ouverte'); son('carte');
+    setTimeout(() => ouvrirVerset(OBS[i].v), calme()?0:500);
+  });
+  document.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.a; if (occupe || selV === null || S.ok.includes(i)) return;
+    occupe = true; b.classList.add('ouverte'); son('carte');
+    const v = selV;
+    if (i === v){
+      setTimeout(()=>{ S.ok.push(i); save();
+        const cv = document.querySelector(`[data-v="${i}"]`); cv.classList.add('ok'); b.classList.add('ok'); son('paire');
+        celebrer(cv, 8, true); celebrer(b, 8, true); selV = null; occupe = false;
+        $('obsEtat').textContent = S.ok.length === 4 ? 'Signal confirmé' : 'Signal confirmé · touche une autre carte Verset.';
+        if (S.ok.length === 4) pret() }, 900);
+    } else {
+      setTimeout(()=>{ b.classList.remove('ouverte'); document.querySelector(`[data-v="${v}"]`).classList.remove('ouverte'); selV = null; occupe = false;
+        $('obsEtat').textContent = 'Touche une carte Verset.' }, 1800);
+    }
+  });
+}
+function ouvrirVerset(k){
+  const d = document.createElement('div'); d.className = 'voile'; d.id = 'voile';
+  d.innerHTML = `<div class="boite-v">${versetHTML(k)}<button class="big" id="luOk">J'ai lu${ico('i-fleche')}</button>${pres(presVerset(k))}</div>`;
+  document.body.appendChild(d); brancherVerset(k);
+  $('luOk').onclick = () => { d.remove(); $('obsEtat').textContent = 'Trouve la carte Qui il est qui va avec.' };
+}
+
+/* ----- décodeur : le tri TITRE / NOM ----- */
+let triOccupe = false;
+function majTri(){
+  const z = $('tri'); if (!z) return;
+  const fini = S.tri.i >= 6, m = fini ? null : MOTS[S.tri.ordre[S.tri.i]];
+  z.innerHTML = `<div class="pile">${fini ? `<div class="lire"><p class="frag">${esc(TRI_FIN)}</p></div>` :
+      `<div class="mot" id="mot">${ico(m.nom ? 'i-etoile-or' : 'i-badge')}<div><p class="w">${esc(m.w)}</p><p class="r">${esc(m.r)}</p></div></div>`}</div>
+    <div class="tiroirs">
+      <button class="tiroir" data-t="titre"><span class="t-nom">TITRE</span><span class="t-contenu">${S.tri.titre.map(w=>`<span class="puce">${esc(w)}</span>`).join('')}</span></button>
+      <button class="tiroir nom" data-t="nom"><span class="t-nom">NOM</span><span class="t-contenu">${S.tri.nom ? `<span class="puce or">${esc(S.tri.nom)}</span>` : ''}</span></button>
+    </div>`;
+  if (fini){ $('triEtat').textContent = 'Signal confirmé'; return }
+  const c = $('mot'); let x0 = 0, y0 = 0, tenu = false;
+  c.onpointerdown = ev => { if (triOccupe) return; tenu = true; x0 = ev.clientX; y0 = ev.clientY; c.dataset.dx = 0; c.dataset.dy = 0; c.setPointerCapture(ev.pointerId); c.classList.add('tenu'); c.style.transition = 'none' };
+  c.onpointermove = ev => { if (!tenu) return; const dx = ev.clientX - x0, dy = ev.clientY - y0; c.dataset.dx = dx; c.dataset.dy = dy; c.style.transform = `translate(${dx}px,${dy}px)` };
+  c.onpointerup = ev => { if (!tenu) return; tenu = false; c.classList.remove('tenu');
+    const t = [...document.querySelectorAll('.tiroir')].find(b => { const r = b.getBoundingClientRect(); return ev.clientX>=r.left && ev.clientX<=r.right && ev.clientY>=r.top && ev.clientY<=r.bottom });
+    if (t) deposer(t.dataset.t); else { c.style.transition = 'transform .5s cubic-bezier(.3,1.5,.5,1)'; c.style.transform = '' } };
+  c.onpointercancel = () => { tenu = false; c.classList.remove('tenu'); c.style.transform = '' };
+  document.querySelectorAll('.tiroir').forEach(b => b.onclick = () => deposer(b.dataset.t));
+}
+function deposer(t){
+  const c = $('mot'); if (!c || triOccupe) return;
+  const m = MOTS[S.tri.ordre[S.tri.i]], bon = (t === 'nom') === !!m.nom;
+  const tir = document.querySelector(`.tiroir[data-t="${t}"]`), cr = tir.getBoundingClientRect(), r = c.getBoundingClientRect();
+  const dx = +c.dataset.dx || 0, dy = +c.dataset.dy || 0;
+  const tx = cr.left + cr.width/2 - (r.left + r.width/2) + dx, ty = cr.top + cr.height/2 - (r.top + r.height/2) + dy;
+  triOccupe = true;
+  if (bon){
+    c.style.transition = 'transform .6s ease, opacity .6s ease'; c.style.transform = `translate(${tx}px,${ty}px) scale(.35)`; c.style.opacity = '0';
+    setTimeout(()=>{ if (t === 'nom') S.tri.nom = m.w; else S.tri.titre.push(m.w); S.tri.i++; save(); son(t === 'nom' ? 'paire' : 'carte');
+      triOccupe = false; majTri(); celebrer(document.querySelector(`.tiroir[data-t="${t}"]`), t === 'nom' ? 16 : 6, t !== 'nom');
+      if (S.tri.i >= 6) pret() }, calme()?0:600);
+  } else {
+    /* mauvais tiroir : la carte rebondit doucement vers sa place, sans marque d'erreur */
+    c.style.transition = 'transform .35s ease'; c.style.transform = `translate(${tx*.45}px,${ty*.45}px)`;
+    setTimeout(()=>{ c.style.transition = 'transform .6s cubic-bezier(.3,1.5,.5,1)'; c.style.transform = ''; c.dataset.dx = 0; c.dataset.dy = 0;
+      setTimeout(()=>{ triOccupe = false }, calme()?0:600) }, calme()?0:350);
+  }
+}
+
+/* ===================== THÈME, SON, RECOMMENCER ===================== */
+const IC_LUNE = '<path d="M15.5 3.5 A8.5 8.5 0 1 0 20.5 15 A7 7 0 0 1 15.5 3.5 Z" fill="currentColor"/>';
+const IC_SOLEIL = '<circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+function appliquerTheme(t){
+  document.documentElement.dataset.theme = t;
+  $('icTheme').innerHTML = t === 'clair' ? IC_LUNE : IC_SOLEIL;
+  $('btnTheme').setAttribute('aria-label', t === 'clair' ? 'Passer en thème sombre' : 'Passer en thème clair');
+}
+let theme = 'clair'; try{ theme = localStorage.getItem(CLE_THEME) || 'clair' }catch(e){}
+appliquerTheme(theme);
+$('btnTheme').onclick = () => { theme = theme === 'clair' ? 'sombre' : 'clair'; try{ localStorage.setItem(CLE_THEME, theme) }catch(e){}; appliquerTheme(theme) };
+function majHP(){
+  const m = window.SonsV ? SonsV.estMuet() : true;
+  $('hpOn').style.display = m ? 'none' : ''; $('hpOff').style.display = m ? '' : 'none';
+  $('btnHP').setAttribute('aria-label', m ? 'Son coupé' : 'Son activé');
+}
+$('btnHP').onclick = () => { if (window.SonsV) SonsV.muet(!SonsV.estMuet()); majHP() };
+majHP();
+$('btnReset').onclick = () => $('confirm').hidden = false;
+$('nonReset').onclick = () => $('confirm').hidden = true;
+$('ouiReset').onclick = () => { S = neuf(); save(); $('confirm').hidden = true; const v = $('voile'); if (v) v.remove(); render(); window.scrollTo(0,0) };
+
+render();
+</script>
+</body>
+</html>
