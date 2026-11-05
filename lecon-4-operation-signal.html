@@ -131,7 +131,7 @@ button{ font:inherit; color:inherit }
 /* panneau de lecture : fond doux, jamais d'étoiles derrière un mot */
 .panneau{ width:100%; background:var(--panneau); border:1px solid var(--panneau-b); border-radius:24px; padding:30px 32px; min-width:0;
   box-shadow:0 10px 34px rgba(15,25,70,.10) }
-.question{ font-family:var(--lire-f); font-size:28px; line-height:1.6; letter-spacing:.02em; word-spacing:.1em; margin:0; color:var(--txt); max-width:24em }
+.question{ font-family:var(--lire-f); font-size:26px; line-height:1.6; letter-spacing:.02em; word-spacing:.1em; margin:0; color:var(--txt); max-width:24em }
 .phrase{ font-family:var(--lire-f); font-size:27px; line-height:1.6; letter-spacing:.02em; word-spacing:.1em; margin:0; color:var(--txt) }
 .phrase.petite{ font-size:22px; color:var(--txt2) }
 .aide-btn{ margin-top:22px; min-height:48px; padding:0 16px; border-radius:12px; border:1.5px dashed var(--glace-t); background:transparent; color:var(--glace-t);
@@ -141,11 +141,11 @@ button{ font:inherit; color:inherit }
 .lire{ width:100%; background:var(--creme); color:var(--encre); border:1px solid var(--creme-b); border-radius:24px; padding:30px 34px; min-width:0;
   box-shadow:0 10px 34px rgba(15,25,70,.12) }
 .lire .ref{ font-family:var(--titre-f); font-size:19px; font-weight:700; letter-spacing:.04em; color:var(--ref); margin:0 0 14px }
-.lire .frag{ font-family:var(--lire-f); font-size:28px; line-height:1.7; letter-spacing:.03em; word-spacing:.12em; margin:0; max-width:22em; animation:fondu .6s ease both }
+.lire .frag{ font-family:var(--lire-f); font-size:24px; line-height:1.75; letter-spacing:.03em; word-spacing:.12em; margin:0; max-width:34em; animation:fondu .6s ease both }
+.lire mark{ background:rgba(255,210,94,.5); color:inherit; border-radius:5px; padding:0 .12em; box-decoration-break:clone; -webkit-box-decoration-break:clone }
+.lecon p{ font-family:var(--lire-f); font-size:22px; line-height:1.75; letter-spacing:.02em; word-spacing:.1em; margin:0; max-width:36em; color:var(--txt) }
+.lecon p + p{ margin-top:16px }
 .lire .refrain{ font-family:var(--lire-f); font-size:24px; line-height:1.6; letter-spacing:.03em; color:#7A570B; font-weight:700; margin:18px 0 0; animation:fondu .8s ease both }
-.lecteur{ display:flex; align-items:center; gap:10px; justify-content:center }
-.lecteur svg{ width:30px; height:30px }
-.lecteur b{ font-family:var(--titre-f); font-size:15px; color:var(--txt2); min-width:2.6em }
 .livre{ display:flex; align-items:center; gap:10px; margin:0; font-size:17px; line-height:1.5; color:var(--txt2); text-align:left;
   background:var(--panneau); border:1px solid var(--panneau-b); border-radius:14px; padding:10px 16px; max-width:30em }
 .livre svg{ width:30px; height:30px; flex:none }
@@ -314,7 +314,7 @@ details.repli summary::-webkit-details-marker{ display:none }
 @media (max-width:520px){
   .panneau, .lire{ padding:22px 20px; border-radius:20px }
   .question{ font-size:23px } .phrase{ font-size:23px } .phrase.petite{ font-size:19px }
-  .lire .frag{ font-size:23px } .lire .refrain{ font-size:20px } .crypto{ font-size:21px; padding:22px }
+  .lire .frag{ font-size:22px } .lecon p{ font-size:20px } .lire .refrain{ font-size:20px } .crypto{ font-size:21px; padding:22px }
   .big{ font-size:20px; min-height:68px; padding:0 22px } .btn{ font-size:16px; padding:0 16px }
   .rang{ grid-template-columns:repeat(2, minmax(0,1fr)) } .carte .face .t{ font-size:14px } .carte{ aspect-ratio:5/6 }
   .rang.rv .carte{ aspect-ratio:5/3 } .rang.rv .carte .f{ gap:2px; padding:6px } .rang.rv .carte svg{ width:30% } .rang.rv .carte .vr{ font-size:15px }
@@ -374,9 +374,6 @@ try{ document.documentElement.dataset.theme = localStorage.getItem('operationSig
     <rect x="42" y="27" width="18" height="10" rx="2" fill="#7FA6D8" stroke="#1B2340" stroke-width="2"/>
     <circle cx="32" cy="32" r="12" fill="#EAF3FC" stroke="#1B2340" stroke-width="3"/>
     <circle cx="32" cy="32" r="5" fill="#E8B84A" stroke="#1B2340" stroke-width="1.6"/></symbol>
-  <symbol id="i-lecteur" viewBox="0 0 64 64">
-    <path d="M6 50 V18 Q19 13 32 20 Q45 13 58 18 V50 Q45 45 32 52 Q19 45 6 50 Z" fill="#FFF8E8" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M32 20 V52" stroke="currentColor" stroke-width="2.4"/></symbol>
 
   <!-- niveaux -->
   <symbol id="lv1" viewBox="0 0 64 64">
@@ -829,18 +826,44 @@ function son(nom){ try{ if (window.SonsV && typeof SonsV[nom] === 'function') So
 function etoileD(cx, cy, R, r){ let d=''; for(let k=0;k<10;k++){ const a=-Math.PI/2+k*Math.PI/5, rr=k%2?r:R; d+=(k?'L':'M')+(cx+rr*Math.cos(a)).toFixed(1)+' '+(cy+rr*Math.sin(a)).toFixed(1)+' ' } return d+'Z' }
 
 /* ===================== TEXTES — recopiés de la trame du 05/11/2026 ===================== */
-/* versets : seulement le morceau utile (partie D2) ; lit : qui lit pendant l'étude */
+/* versets EN ENTIER (partie D), mot pour mot ; les retours à la ligne suivent le sens, aucun mot n'est changé.
+   m : les morceaux de la partie D2, mis en valeur dans le verset. */
 const V = {
-  ch:   { ref:"2 Chroniques 2:5", f:["notre Dieu est plus grand que tous les autres dieux"], lit:'moi' },
-  is8:  { ref:"Isaïe 42:8", f:["Je suis Jéhovah.", "C'est là mon nom"], lit:'toi' },
-  ex:   { ref:"Exode 3:15", f:["C'est là mon nom pour toujours"], lit:'moi' },
-  ps83: { ref:"Psaume 83:18", f:["toi, dont le nom est Jéhovah,", "tu es, toi seul, le Très-Haut sur toute la terre !"], lit:'toi' },
-  re8:  { ref:"Révélation 4:8", f:["Jéhovah Dieu, le Tout-Puissant"], lit:'moi' },
-  re11: { ref:"Révélation 4:11", f:["tu as créé toutes choses"], lit:'moi' },
-  ps90: { ref:"Psaume 90:2", f:["depuis toujours et pour toujours, tu es Dieu."], lit:'moi' },
-  ps136:{ ref:"Psaume 136:1-3", f:["Remerciez Jéhovah, car il est bon", "Remerciez le Dieu des dieux\nRemerciez le Seigneur des seigneurs"], refrain:"car son amour fidèle est éternel", lit:'toi' },
-  rm:   { ref:"Romains 10:13", f:["tous ceux qui feront appel au nom de Jéhovah", "seront sauvés"], lit:'toi' },
-  jc:   { ref:"Jacques 4:8", f:["Approchez-vous de Dieu,", "et il s'approchera de vous."], lit:'toi' }
+  ch:   { ref:"2 Chroniques 2:5", t:"« La maison que je construis sera grande,\ncar notre Dieu est plus grand que tous les autres dieux. »", m:["notre Dieu est plus grand que tous les autres dieux"] },
+  is5:  { ref:"Isaïe 42:5", t:"« Voici ce que dit le vrai Dieu, Jéhovah, le Créateur du ciel\net le Grand Dieu qui l'a étendu,\ncelui qui a formé la terre et ses produits,\ncelui qui donne le souffle à ses habitants\net l'esprit à ceux qui y marchent : »", m:["Voici ce que dit le vrai Dieu, Jéhovah, le Créateur du ciel"] },
+  is8:  { ref:"Isaïe 42:8", t:"« Je suis Jéhovah. C'est là mon nom ;\nje ne donne ma gloire à personne\nni ma louange aux statues. »", m:["Je suis Jéhovah. C'est là mon nom"] },
+  ex:   { ref:"Exode 3:15", t:"« Puis Dieu dit encore à Moïse : « Voici ce que tu diras aux Israélites : \"Jéhovah le Dieu de vos ancêtres, le Dieu d'Abraham, le Dieu d'Isaac et le Dieu de Jacob, m'a envoyé vers vous.\"\nC'est là mon nom pour toujours\net c'est sous ce nom qu'on doit se souvenir de moi de génération en génération. »", m:["C'est là mon nom pour toujours"] },
+  dt:   { ref:"Deutéronome 4:39", t:"« Sachez donc aujourd'hui et rappelez-vous\nque Jéhovah est le vrai Dieu en haut dans le ciel et en bas sur la terre.\nIl n'y en a pas d'autre. »", m:["Jéhovah est le vrai Dieu en haut dans le ciel et en bas sur la terre"] },
+  ps83: { ref:"Psaume 83:18", t:"« que tous sachent que toi, dont le nom est Jéhovah,\ntu es, toi seul, le Très-Haut sur toute la terre ! »", m:["toi, dont le nom est Jéhovah,", "tu es, toi seul, le Très-Haut sur toute la terre !"] },
+  re8:  { ref:"Révélation 4:8", t:"« Ces quatre créatures vivantes avaient chacune six ailes, qui étaient pleines d'yeux par-dessus et par-dessous. Et jour et nuit, elles disent sans arrêt :\n« Saint, saint, saint est Jéhovah Dieu, le Tout-Puissant, qui était et qui est et qui vient. » »", m:["Jéhovah Dieu, le Tout-Puissant"] },
+  re11: { ref:"Révélation 4:11", t:"« « Tu es digne, Jéhovah notre Dieu, de recevoir la gloire et l'honneur et la puissance,\ncar tu as créé toutes choses,\net c'est par ta volonté qu'elles sont venues à l'existence et ont été créées. » »", m:["tu as créé toutes choses"] },
+  ps90: { ref:"Psaume 90:2", t:"« Avant que les montagnes soient nées\nou que tu aies donné naissance à la terre et au sol productif,\ndepuis toujours et pour toujours, tu es Dieu. »", m:["depuis toujours et pour toujours, tu es Dieu."] },
+  ps136:{ ref:"Psaume 136:1-3", t:"« Remerciez Jéhovah, car il est bon —\ncar son amour fidèle est éternel.\nRemerciez le Dieu des dieux —\ncar son amour fidèle est éternel.\nRemerciez le Seigneur des seigneurs —\ncar son amour fidèle est éternel. »", m:["Remerciez Jéhovah, car il est bon", "Remerciez le Dieu des dieux", "Remerciez le Seigneur des seigneurs", "car son amour fidèle est éternel"] },
+  rm:   { ref:"Romains 10:13", t:"« Car « tous ceux qui feront appel au nom de Jéhovah\nseront sauvés ». »", m:["tous ceux qui feront appel au nom de Jéhovah", "seront sauvés"] },
+  jc:   { ref:"Jacques 4:8", t:"« Approchez-vous de Dieu,\net il s'approchera de vous. »", m:["Approchez-vous de Dieu,", "et il s'approchera de vous."] }
+};
+/* texte de la leçon (partie A1), mot pour mot : ce qui permet de répondre, sur l'écran même de la question */
+const LECON = {
+  intro:"Depuis presque toujours, les humains adorent de nombreux dieux et déesses. Mais la Bible parle d'un Dieu qui est « plus grand que tous les autres dieux » (2 Chroniques 2:5). Qui est ce Dieu ? Et qu'est-ce qui le rend plus grand que tous les autres dieux que les gens adorent ?",
+  p1a:"Dans la Bible, Dieu se présente à nous. Il dit : « Je suis Jéhovah. C'est là mon nom » (lire Isaïe 42:5, 8).",
+  p1b:"Jéhovah veut qu'on connaisse son nom (Exode 3:15). Qu'est-ce qui le montre ? Dans la Bible, il a fait écrire son nom plus de 7 000 fois !",
+  p1c:"Jéhovah est le nom du « vrai Dieu en haut dans le ciel et en bas sur la terre » (Deutéronome 4:39).",
+  p2a:"Les humains adorent beaucoup de dieux, mais la Bible dit que Jéhovah est le seul vrai Dieu. Pourquoi ? Il y a de nombreuses raisons.",
+  p2b:"Jéhovah possède l'autorité suprême et lui seul est « le Très-Haut sur toute la terre » (lire Psaume 83:18). C'est le « Tout-Puissant », ce qui veut dire qu'il a le pouvoir de faire ce qu'il veut. Il a « créé toutes choses » : l'univers et toute vie sur terre (Révélation 4:8, 11). Jéhovah est le seul à avoir toujours existé, et il existera toujours (Psaume 90:2).",
+  p3:"Dieu a de nombreux titres, mais il n'a qu'un seul nom",
+  p3b:"La Bible dit que les gens adorent beaucoup de dieux et de seigneurs.",
+  p4:"Jéhovah veut que vous connaissiez son nom et que vous l'utilisiez",
+  p4b:"Jéhovah veut qu'on utilise son nom.",
+  p5a:"Soten, une femme originaire du Cambodge, a ressenti une émotion très forte quand elle a appris le nom de Dieu.",
+  p5b:"Pour être ami avec quelqu'un, il faut au moins connaître son nom.",
+  bref:"Jéhovah est le nom du seul vrai Dieu. Il veut qu'on connaisse et qu'on utilise son nom pour qu'on devienne son ami."
+};
+/* pour chaque question : ce qui s'affiche au-dessus d'elle (leçon et/ou verset) */
+const SOURCE = {
+  q1:[['l','p1a'],['l','p1b']], q2:[] /* l'écran précédent : le § 2 de la leçon, en entier */, q3a:[['l','p3'],['l','p3b']], q3b:[] /* l'écran précédent : Psaume 136:1-3 en entier */,
+  q4a:[['l','p4'],['l','p1b']], q4b:[['l','p4b']] /* + écran précédent : Romains 10:13 */, q4c:[['l','p4b']], q4d:[['l','p4']],
+  q5a:[['l','p5a']], q5b:[['l','p5b']] /* + écran précédent : Jacques 4:8 */, q5c:[['l','p5b']],
+  oep1:[['l','p1a']], oep2:[['l','p4b'],['l','p1b']], r1:[['l','p2a'],['l','p1c']], r2:[['l','bref']], r3:[['l','p5b'],['l','bref']]
 };
 /* questions simplifiées et leur aide (partie C) */
 const Q = {
@@ -871,7 +894,7 @@ const COEUR = {
   h5:"Tu fais un pas, il en fait un."
 };
 const PHR = {
-  nom:{ hud:"Son nom", t:"Son nom veut dire « Il fait devenir », d'après des biblistes.", petite:true },
+  nom:{ hud:"Son nom", t:"« Jéhovah » est la forme française d'un nom hébreu qui, d'après des biblistes, signifie « Il fait devenir »." },
   ami:{ hud:"Arrimage", t:"Pour être ami avec quelqu'un, il faut au moins connaître son nom." },
   oep:{ hud:"On entend parfois", t:"Certains disent : il n'y a qu'un Dieu, alors son nom, peu importe." }
 };
@@ -901,8 +924,6 @@ const pres = () => '';
 const PLEIN = {}, NOTE_V = {}, LIVRE_Q = {}, NOTE_Q = {};
 const AIDE_BTN = 'Un indice ?';
 const AIDE_PRE = 'Indice : ';
-const LECTURE = () => 'À toi de lire';
-const LECTEUR0 = () => 'moi';
 const CLE = 'operation-signal-famille-v1', CLE_THEME = 'operationSignal.famille.theme';
 
 
@@ -1126,12 +1147,12 @@ function avancer(){
 /* ===================== NIVEAUX : une suite d'écrans, une chose à lire par écran ===================== */
 function etapes(n){
   switch(n){
-    case 1: return [{t:'titre'},{t:'v',k:'ch'},{t:'q',k:'q1'},{t:'v',k:'is8'},{t:'decode'},{t:'c7000'},{t:'phrase',k:'nom'},{t:'v',k:'ex'},{t:'etoile'},{t:'coeur',k:'h1'},{t:'tour'},{t:'fin'}];
-    case 2: return [{t:'titre'},{t:'q',k:'q2'},{t:'obs'},{t:'etoile'},{t:'coeur',k:'h2'},{t:'tour'},{t:'fin'}];
-    case 3: return [{t:'titre'},{t:'video',k:'v041'},{t:'q',k:'q3a'},{t:'tri'},{t:'v',k:'ps136'},{t:'q',k:'q3b'},{t:'secret'},{t:'etoile'},{t:'coeur',k:'h3'},{t:'tour'},{t:'fin',phrase:'Encore deux niveaux.'}];
+    case 1: return [{t:'titre'},{t:'lecon',k:'intro'},{t:'v',k:'ch'},{t:'v',k:'is5'},{t:'v',k:'is8'},{t:'decode'},{t:'c7000'},{t:'v',k:'ex'},{t:'v',k:'dt'},{t:'phrase',k:'nom'},{t:'q',k:'q1'},{t:'etoile'},{t:'coeur',k:'h1'},{t:'tour'},{t:'fin'}];
+    case 2: return [{t:'titre'},{t:'lecon',k:'p2a'},{t:'obs'},{t:'lecon',k:'p2b'},{t:'q',k:'q2'},{t:'etoile'},{t:'coeur',k:'h2'},{t:'tour'},{t:'fin'}];
+    case 3: return [{t:'titre'},{t:'video',k:'v041'},{t:'tri'},{t:'q',k:'q3a'},{t:'v',k:'ps136'},{t:'q',k:'q3b'},{t:'secret'},{t:'etoile'},{t:'coeur',k:'h3'},{t:'tour'},{t:'fin',phrase:'Encore deux niveaux.'}];
     case 4: return [{t:'titre'},{t:'video',k:'v311'},{t:'q',k:'q4a'},{t:'v',k:'rm'},{t:'q',k:'q4b'},{t:'q',k:'q4c'},{t:'q',k:'q4d'},{t:'etoile'},{t:'coeur',k:'h4'},{t:'tour'},{t:'fin'}];
     case 5: { const a = [{t:'titre'},{t:'vid5'}]; if (S.vid5 === 'oui') a.push({t:'q',k:'q5a'});
-      a.push({t:'phrase',k:'ami'},{t:'v',k:'jc'},{t:'q',k:'q5b'},{t:'q',k:'q5c'},{t:'dock'},{t:'phrase',k:'oep'},{t:'q',k:'oep2',alt:['oep2','oep1']},
+      a.push({t:'v',k:'jc'},{t:'q',k:'q5b'},{t:'q',k:'q5c'},{t:'dock'},{t:'phrase',k:'oep'},{t:'q',k:'oep2',alt:['oep2','oep1']},
         {t:'constel'},{t:'enbref'},{t:'q',k:'r3',alt:['r3','r1','r2'],hud:'Une question de révision'},{t:'objectif'},{t:'m5'},{t:'boite'},{t:'coeur',k:'h5'},{t:'fin'});
       return a }
   }
@@ -1156,26 +1177,20 @@ function rNiv(n){
 }
 function pret(){ const s = $('suite'); if (s) s.hidden = false; const p = $('passer'); if (p) p.hidden = true }
 
-/* bloc verset : un morceau à la fois, « Lis la suite » pour le second */
+/* bloc verset : le verset EN ENTIER, les morceaux de la partie D2 mis en valeur */
+function versetTexte(k){
+  const v = V[k]; let h = esc(v.t);
+  v.m.forEach(m => { const e = esc(m); h = h.split(e).join(`<mark>${e}</mark>`) });
+  return h.replace(/\n/g, '<br>');
+}
 function versetHTML(k){
   const v = V[k];
-  return `<div class="lecteur"><p class="hud">${esc(LECTURE(v))}</p></div>
-    <div class="lire"><p class="ref">${esc(v.ref)}</p><p class="frag" id="frag">« ${esc(v.f[0])} »</p>${v.refrain ? `<p class="refrain" id="refrain" hidden>${esc(v.refrain)}</p>` : ''}</div>
-    <div class="row">${v.f.length>1 ? `<button class="btn" id="lisSuite">Lis la suite</button>` : ''}
-      <button class="btn leger" id="atoi"><span class="lecteur">${ico('i-lecteur')}<b id="lecMot">${LECTEUR0(v)}</b></span>${LECTEUR0(v)==='moi' ? 'À toi' : 'À moi'}</button></div>`;
+  return `<p class="hud">Dans la Bible</p><div class="lire"><p class="ref">${esc(v.ref)}</p><p class="frag">${versetTexte(k)}</p></div>`;
 }
-function brancherVerset(k){
-  const v = V[k]; let m = 0;
-  const b = $('lisSuite');
-  if (b) b.onclick = () => { m = 1 - m; const f = $('frag');
-    f.innerHTML = '« ' + esc(v.f[m]).replace(/\n/g, '<br>') + ' »'; f.style.animation = 'none'; void f.offsetWidth; f.style.animation = '';
-    b.textContent = m ? 'Relire le début' : 'Lis la suite';
-    const r = $('refrain'); if (r && m === 1) r.hidden = false; };
-  const a = $('atoi');
-  if (a) a.onclick = () => { const w = $('lecMot'), toi = w.textContent === 'moi'; w.textContent = toi ? 'toi' : 'moi';
-    a.lastChild.textContent = toi ? 'À moi' : 'À toi' };
-}
-const presVerset = k => (NOTE_V[k] || PLEIN[k]) ? `<p>${NOTE_V[k] || ''}</p><p><b>${esc(V[k].ref)}</b> ${esc(PLEIN[k] || '')}</p>` : '';
+function brancherVerset(){}
+const presVerset = k => NOTE_V[k] ? `<p>${NOTE_V[k]}</p>` : '';
+/* texte de la leçon : paragraphes complets, mot pour mot */
+const leconHTML = keys => `<p class="hud">La leçon</p><div class="panneau lecon">${keys.map(k => `<p>${esc(LECON[k])}</p>`).join('')}</div>`;
 
 function etoileHTML(n, on){
   return `<svg class="g-etoile ${on?'on':''}" id="gEtoile" viewBox="0 0 120 120" aria-label="Étoile ${n}">
@@ -1192,9 +1207,11 @@ const RENDU = {
     return { html, pres: '' };
   },
   v(n, e){ return { html: versetHTML(e.k), pres: presVerset(e.k), after: () => brancherVerset(e.k) } },
+  lecon(n, e){ return { html: leconHTML([e.k]) } },
   q(n, e){
     const liste = e.alt || [e.k]; const k = liste[(S.alt[n+'-'+I] || 0) % liste.length], q = Q[k];
-    const html = `${k==='q5a' ? IMG('134') : ''}<p class="hud">${e.hud || (e.k==='oep2' ? 'On entend parfois' : 'La question')}</p>
+    const src = (SOURCE[k] || []).filter(([t]) => t === 'l').map(([,c]) => c);
+    const html = `${k==='q5a' ? IMG('134') : ''}${src.length ? leconHTML(src) : ''}<p class="hud">${e.hud || (e.k==='oep2' ? 'On entend parfois' : 'La question')}</p>
       <div class="panneau"><p class="question">${esc(q[0])}</p>${aideHTML(q[1])}</div>
       ${liste.length>1 ? `<button class="btn" id="autreQ">Une autre question</button>` : ''}`;
     return { html, pres: '',
