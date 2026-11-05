@@ -478,108 +478,182 @@ try{ document.documentElement.dataset.theme = localStorage.getItem('operationSig
 <!-- MODULE SONS : contenu de sons.js (Milo), recopié tel quel. Ne pas modifier : veto de Milo. -->
 <script id="module-sons">
 /* =====================================================================
-   Protocole V - sons.js
+   Sons communs des lecons - sons.js (version 2, 05/11/2026)
    Auteur : Milo (son). Module autonome, Web Audio API, aucun fichier audio,
-   aucune ressource externe. Expose window.SonsV.
+   aucune ressource externe. Expose window.SonsV (meme API que Protocole V,
+   plus SonsV.mesurer() pour le controle sans oreille).
 
-   Joueur tres sensible au bruit. Seuils fixes, verifies par SonsV.verifier() :
-     - fondamentale (ou centre de filtre) entre 80 Hz et 2000 Hz
-     - attaque >= 5 ms (pas de clic sec), extinction exponentielle
+   Joueur tres sensible au bruit, ecoute sur haut-parleur de tablette.
+   Seuils fixes, verifies par SonsV.verifier() (tableau vide = tout est tenu) :
+     NIVEAUX (crete en sortie, borne haute : somme des cretes des voix en phase)
+     - volume par defaut : chaque son entre -15 et -10 dBFS (cible -12)
+     - volume maximal    : aucun son au-dessus de -6 dBFS
+     - garde-fou de sortie : lineaire jusqu'a -6 dBFS, arrondi au-dessus,
+       plafond absolu -2,5 dBFS. Pas de compresseur (son gain de rattrapage
+       automatique faussait les dBFS de la version 1).
+     SPECTRE (petits haut-parleurs : rien d'utile sous ~400 Hz)
+     - fondamentale entre 440 et 2000 Hz
+     - harmonique ajoutee (2x) jusqu'a 3200 Hz, toujours plus faible que sa fondamentale
+     - filtre du souffle entre 500 et 2500 Hz
+     - passe-bas general a 4 kHz : rien d'aigu ni de percant
+     ENVELOPPE
+     - attaque >= 5 ms (pas de clic sec)
+     - decroissance exponentielle jusqu'a -20 dB, puis extinction lineaire en 20 ms
      - crete par voix <= 0,5 avant le gain maitre
-     - gain maitre 0,15 par defaut, plafonne a 0,30
-     - durees max : pop 0,12 s · carte 0,15 s · etape 0,40 s · paire 0,35 s
-                    sceau 0,65 s · victoire 1,40 s
-     - chaine : voix -> passe-bas 3 kHz -> limiteur (seuil -6 dB, garde-fou
-       seulement) -> gain maitre -> sortie. Crete d'un son seul : 0,45 x 0,15
-       = 0,068 de la pleine echelle, soit environ -23 dBFS.
+     - durees max : pop 0,16 s · carte 0,18 s · etape 0,40 s · paire 0,40 s
+                    sceau 0,70 s · victoire 1,40 s
      - rien en boucle, rien en fond ; un meme son ne se relance pas a moins de 60 ms
+   Chaine : voix -> bus -> passe-bas 4 kHz -> gain maitre -> garde-fou -> sortie.
+   Premier toucher : le son demande avant que le contexte soit "running" est mis
+   en file d'attente (3 au plus) et joue des que le contexte demarre, s'il a
+   moins de 0,6 s ; plus vieux, il est abandonne pour ne pas tomber a contretemps.
    Tonalite unique : do majeur.
    ===================================================================== */
 (function () {
   'use strict';
 
-  var CLE_MUET = 'protocoleV.sons.muet';
-  var CLE_VOL = 'protocoleV.sons.volume';
-  var VOL_DEFAUT = 0.15, VOL_MAX = 0.30;
-  var F_MIN = 80, F_MAX = 2000, ATTAQUE_MIN = 0.005, CRETE_MAX = 0.5;
-  var ANTI_REBOND = 0.06, VOIX_MAX = 12;
+  var CLE_MUET = 'sonsCommuns.muet';
+  var CLE_MUET_V1 = 'protocoleV.sons.muet';      // le choix "muet" fait en lecon 3 est respecte
+  var CLE_VOL = 'sonsCommuns.volume';            // nouvelle cle : l'ancien 0,15 enregistre ne revient pas
+  var VOL_DEFAUT = 0.5, VOL_MAX = 0.7;           // -6 dB et -3,1 dB de gain maitre
+  var DBFS_DEFAUT_MIN = -15, DBFS_DEFAUT_MAX = -10, DBFS_PLAFOND = -6;
+  var F_MIN = 440, F_MAX = 2000, H_MAX = 3200, FC_MIN = 500, FC_MAX = 2500;
+  var ATTAQUE_MIN = 0.005, CRETE_MAX = 0.5, EXTINCTION = 0.02;
+  var ANTI_REBOND = 0.06, VOIX_MAX = 14, ATTENTE_MAX_MS = 600, ATTENTE_NB = 3;
 
-  var DUREE_MAX = { pop: 0.12, carte: 0.15, etape: 0.40, paire: 0.35, sceau: 0.65, victoire: 1.40 };
+  /* Lecture d'une tablette en mode silencieux (iPadOS 17+) : 'playback' fait jouer
+     les sons malgre le mode silencieux ; le bouton haut-parleur du jeu reste le
+     seul interrupteur. Mettre 'ambient' pour respecter le mode silencieux. */
+  var SESSION_AUDIO = 'playback';
+
+  var DUREE_MAX = { pop: 0.16, carte: 0.18, etape: 0.40, paire: 0.40, sceau: 0.70, victoire: 1.40 };
 
   /* ---- Partitions. t = depart (s), a = attaque (s), d = duree totale de la voix (s),
-          g = crete, f0 -> f1 = glissando (Hz), fc0 -> fc1 = balayage du filtre (Hz). ---- */
+          g = crete, f0 -> f1 = glissando (Hz), fc0 -> fc1 = balayage du filtre (Hz),
+          h = 1 : harmonique ajoutee a une fondamentale. ---- */
   var SONS = {
-    // petite bulle qui monte : sinus 420 -> 680 Hz, 90 ms
+    // bulle qui monte : mi5 -> si5 glisse, avec son octave, 140 ms
     pop: [
-      { type: 'osc', onde: 'sine', f0: 420, f1: 680, t: 0, a: 0.006, d: 0.09, g: 0.45 }
+      { type: 'osc', onde: 'sine', f0: 659.25,  f1: 987.77,  t: 0, a: 0.008, d: 0.14, g: 0.38 },
+      { type: 'osc', onde: 'sine', f0: 1318.51, f1: 1975.53, t: 0, a: 0.008, d: 0.08, g: 0.10, h: 1 }
     ],
-    // froissement de carte : souffle filtre + petit appui grave, 110 ms
+    // carte : souffle filtre haut-medium + petit appui do5 -> la4, 140 ms
     carte: [
-      { type: 'bruit', filtre: 'bandpass', fc0: 700, fc1: 1400, q: 1.2, t: 0, a: 0.012, d: 0.11, g: 0.30 },
-      { type: 'osc', onde: 'triangle', f0: 300, f1: 260, t: 0, a: 0.006, d: 0.07, g: 0.12 }
+      { type: 'bruit', filtre: 'bandpass', fc0: 1200, fc1: 2200, q: 1.0, t: 0, a: 0.012, d: 0.14, g: 0.30 },
+      { type: 'osc', onde: 'triangle', f0: 523.25, f1: 440.00, t: 0, a: 0.006, d: 0.10, g: 0.16 }
     ],
-    // souffle tres leger, decale de 50 ms pour ne pas s'empiler sur le pop du bouton
+    // etape : souffle doux + sol5 tres leger, decale de 50 ms pour ne pas s'empiler sur le pop
     etape: [
-      { type: 'bruit', filtre: 'lowpass', fc0: 300, fc1: 1100, q: 0.7, t: 0.05, a: 0.12, d: 0.32, g: 0.22 }
+      { type: 'bruit', filtre: 'lowpass', fc0: 700, fc1: 1800, q: 0.7, t: 0.05, a: 0.10, d: 0.33, g: 0.30 },
+      { type: 'osc', onde: 'sine', f0: 783.99, t: 0.05, a: 0.03, d: 0.30, g: 0.16 }
     ],
-    // paire trouvee : do5 puis sol5 (quinte montante), 320 ms
+    // paire trouvee : do5 puis sol5 (quinte montante), 340 ms
     paire: [
-      { type: 'osc', onde: 'sine',     f0: 523.25, t: 0,    a: 0.008, d: 0.18, g: 0.34 },
-      { type: 'osc', onde: 'triangle', f0: 523.25, t: 0,    a: 0.008, d: 0.18, g: 0.07 },
-      { type: 'osc', onde: 'sine',     f0: 783.99, t: 0.10, a: 0.008, d: 0.22, g: 0.40 },
-      { type: 'osc', onde: 'triangle', f0: 783.99, t: 0.10, a: 0.008, d: 0.22, g: 0.08 }
+      { type: 'osc', onde: 'sine', f0: 523.25,  t: 0,    a: 0.008, d: 0.20, g: 0.34 },
+      { type: 'osc', onde: 'sine', f0: 1046.50, t: 0,    a: 0.008, d: 0.12, g: 0.10, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 783.99,  t: 0.10, a: 0.008, d: 0.24, g: 0.34 },
+      { type: 'osc', onde: 'sine', f0: 1567.98, t: 0.10, a: 0.008, d: 0.14, g: 0.08, h: 1 }
     ],
-    // sceau : carillon doux mi5 - sol5 - do6, 600 ms
+    // sceau : carillon mi5 - sol5 - do6, 640 ms
     sceau: [
-      { type: 'osc', onde: 'sine',     f0: 659.25,  t: 0,    a: 0.006, d: 0.38, g: 0.30 },
-      { type: 'osc', onde: 'triangle', f0: 659.25,  t: 0,    a: 0.006, d: 0.20, g: 0.05 },
-      { type: 'osc', onde: 'sine',     f0: 783.99,  t: 0.11, a: 0.006, d: 0.38, g: 0.28 },
-      { type: 'osc', onde: 'triangle', f0: 783.99,  t: 0.11, a: 0.006, d: 0.20, g: 0.05 },
-      { type: 'osc', onde: 'sine',     f0: 1046.50, t: 0.22, a: 0.006, d: 0.38, g: 0.34 },
-      { type: 'osc', onde: 'triangle', f0: 1046.50, t: 0.22, a: 0.006, d: 0.20, g: 0.05 }
+      { type: 'osc', onde: 'sine', f0: 659.25,  t: 0,    a: 0.006, d: 0.40, g: 0.26 },
+      { type: 'osc', onde: 'sine', f0: 1318.51, t: 0,    a: 0.006, d: 0.20, g: 0.07, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 783.99,  t: 0.11, a: 0.006, d: 0.40, g: 0.26 },
+      { type: 'osc', onde: 'sine', f0: 1567.98, t: 0.11, a: 0.006, d: 0.20, g: 0.06, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 1046.50, t: 0.22, a: 0.006, d: 0.42, g: 0.28 },
+      { type: 'osc', onde: 'sine', f0: 2093.00, t: 0.22, a: 0.006, d: 0.20, g: 0.06, h: 1 }
     ],
-    // victoire : arpege do5 mi5 sol5, puis accord do6 / sol4 / do4 tenu, 1,20 s
+    // victoire : arpege do5 mi5 sol5, puis accord do6 / sol5 / do5 tenu (remonte d'une
+    // octave par rapport a la v1 : sol4 et do4 ne sortent pas d'un haut-parleur de tablette), 1,35 s
     victoire: [
-      { type: 'osc', onde: 'sine',     f0: 523.25,  t: 0,    a: 0.008, d: 0.25, g: 0.28 },
-      { type: 'osc', onde: 'sine',     f0: 659.25,  t: 0.13, a: 0.008, d: 0.25, g: 0.31 },
-      { type: 'osc', onde: 'sine',     f0: 783.99,  t: 0.26, a: 0.008, d: 0.30, g: 0.34 },
-      { type: 'osc', onde: 'sine',     f0: 1046.50, t: 0.40, a: 0.020, d: 0.80, g: 0.36 },
-      { type: 'osc', onde: 'sine',     f0: 392.00,  t: 0.40, a: 0.030, d: 0.80, g: 0.12 },
-      { type: 'osc', onde: 'triangle', f0: 261.63,  t: 0.40, a: 0.030, d: 0.80, g: 0.14 }
+      { type: 'osc', onde: 'sine', f0: 523.25,  t: 0,    a: 0.008, d: 0.26, g: 0.24 },
+      { type: 'osc', onde: 'sine', f0: 1046.50, t: 0,    a: 0.008, d: 0.14, g: 0.05, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 659.25,  t: 0.13, a: 0.008, d: 0.26, g: 0.24 },
+      { type: 'osc', onde: 'sine', f0: 1318.51, t: 0.13, a: 0.008, d: 0.14, g: 0.05, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 783.99,  t: 0.26, a: 0.008, d: 0.30, g: 0.25 },
+      { type: 'osc', onde: 'sine', f0: 1567.98, t: 0.26, a: 0.008, d: 0.14, g: 0.05, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 1046.50, t: 0.40, a: 0.020, d: 0.95, g: 0.20 },
+      { type: 'osc', onde: 'sine', f0: 783.99,  t: 0.40, a: 0.030, d: 0.95, g: 0.12 },
+      { type: 'osc', onde: 'sine', f0: 523.25,  t: 0.40, a: 0.030, d: 0.95, g: 0.12 }
     ]
   };
 
   /* ---- Etat ---- */
   var ctx = null, bus = null, maitre = null, bruitBuf = null;
-  var actives = 0, dernier = {};
-  var muetEtat = lire(CLE_MUET) === '1';
+  var actives = 0, dernier = {}, attente = [];
+  var muetLu = lire(CLE_MUET);
+  var muetEtat = muetLu !== null ? muetLu === '1' : lire(CLE_MUET_V1) === '1';
   var volume = borne(parseFloat(lire(CLE_VOL)), VOL_DEFAUT);
 
   function lire(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
   function ecrire(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* stockage indisponible */ } }
   function borne(v, defaut) { if (typeof v !== 'number' || isNaN(v)) return defaut; return Math.max(0, Math.min(VOL_MAX, v)); }
+  function dB(x) { return x > 0 ? 20 * Math.log(x) / Math.LN10 : -Infinity; }
 
-  /* ---- Demarrage au premier toucher seulement ---- */
+  /* ---- Garde-fou : identite jusqu'a 0,5 (-6 dBFS), arrondi au-dessus, plafond 0,75 ---- */
+  function courbeGardeFou() {
+    var n = 2048, c = new Float32Array(n);
+    for (var i = 0; i < n; i++) {
+      var x = (i / (n - 1)) * 2 - 1, ax = Math.abs(x), y;
+      if (ax <= 0.5) y = ax;
+      else { var u = (ax - 0.5) / 0.25, e2 = Math.exp(2 * u); y = 0.5 + 0.25 * ((e2 - 1) / (e2 + 1)); }
+      c[i] = x < 0 ? -y : y;
+    }
+    return c;
+  }
+
+  /* ---- Session audio de la tablette ---- */
+  function sessionAudio() {
+    try {
+      if (navigator.audioSession && navigator.audioSession.type !== SESSION_AUDIO) {
+        navigator.audioSession.type = SESSION_AUDIO;
+      }
+    } catch (e) { /* non pris en charge : sans effet */ }
+  }
+
+  /* ---- Demarrage au premier toucher ---- */
+  function construire() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    sessionAudio();
+    ctx = new AC();
+    bus = ctx.createGain(); bus.gain.value = 1;
+    var passeBas = ctx.createBiquadFilter();
+    passeBas.type = 'lowpass'; passeBas.frequency.value = 4000; passeBas.Q.value = 0;
+    maitre = ctx.createGain();
+    maitre.gain.value = muetEtat ? 0 : volume;
+    var gardeFou = ctx.createWaveShaper();
+    gardeFou.curve = courbeGardeFou(); gardeFou.oversample = 'none';
+    bus.connect(passeBas); passeBas.connect(maitre); maitre.connect(gardeFou); gardeFou.connect(ctx.destination);
+    bruitBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.5), ctx.sampleRate);
+    var dat = bruitBuf.getChannelData(0);
+    for (var i = 0; i < dat.length; i++) dat[i] = Math.random() * 2 - 1;
+    ctx.onstatechange = viderAttente;
+  }
+
+  function reprendre() {
+    if (!ctx) return;
+    if (ctx.state === 'suspended' || ctx.state === 'interrupted') {
+      try {
+        var p = ctx.resume();
+        if (p && typeof p.then === 'function') p.then(viderAttente, function () {});
+      } catch (e) { /* rien */ }
+    }
+  }
+
   function deverrouiller() {
     try {
       if (!ctx) {
-        var AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        ctx = new AC();
-        var passeBas = ctx.createBiquadFilter();
-        passeBas.type = 'lowpass'; passeBas.frequency.value = 3000; passeBas.Q.value = 0.5;
-        var limiteur = ctx.createDynamicsCompressor();
-        limiteur.threshold.value = -6; limiteur.knee.value = 6; limiteur.ratio.value = 12;
-        limiteur.attack.value = 0.003; limiteur.release.value = 0.1;
-        maitre = ctx.createGain();
-        maitre.gain.value = muetEtat ? 0 : volume;
-        passeBas.connect(limiteur); limiteur.connect(maitre); maitre.connect(ctx.destination);
-        bus = passeBas;
-        bruitBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.5), ctx.sampleRate);
-        var dat = bruitBuf.getChannelData(0);
-        for (var i = 0; i < dat.length; i++) dat[i] = Math.random() * 2 - 1;
+        construire();
+        if (!ctx) return;
+        // anciens iOS : un tampon muet joue pendant le geste deverrouille la sortie
+        var s = ctx.createBufferSource();
+        s.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+        s.connect(ctx.destination); s.start(0);
       }
-      if (ctx.state === 'suspended') ctx.resume();
+      sessionAudio();
+      reprendre();
+      viderAttente();
     } catch (e) { /* pas d'audio : le jeu reste muet, sans erreur */ }
   }
   ['pointerdown', 'touchend', 'click', 'keydown'].forEach(function (ev) {
@@ -590,8 +664,8 @@ try{ document.documentElement.dataset.theme = localStorage.getItem('operationSig
   function enveloppe(g, t0, v) {
     g.gain.setValueAtTime(0, t0);
     g.gain.linearRampToValueAtTime(v.g, t0 + v.a);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + v.d);
-    g.gain.setValueAtTime(0, t0 + v.d + 0.005);
+    g.gain.exponentialRampToValueAtTime(v.g * 0.1, t0 + v.d - EXTINCTION);
+    g.gain.linearRampToValueAtTime(0, t0 + v.d);
   }
 
   function voix(v, t0) {
@@ -600,7 +674,7 @@ try{ document.documentElement.dataset.theme = localStorage.getItem('operationSig
       src = ctx.createOscillator();
       src.type = v.onde;
       src.frequency.setValueAtTime(v.f0, t0);
-      if (v.f1) src.frequency.exponentialRampToValueAtTime(v.f1, t0 + Math.min(0.05, v.d));
+      if (v.f1) src.frequency.exponentialRampToValueAtTime(v.f1, t0 + Math.min(0.06, v.d));
       src.connect(g);
     } else {
       src = ctx.createBufferSource();
@@ -619,8 +693,7 @@ try{ document.documentElement.dataset.theme = localStorage.getItem('operationSig
     src.stop(t0 + v.d + 0.02);
   }
 
-  function jouer(nom) {
-    if (muetEtat || !ctx || ctx.state !== 'running') return;
+  function lancer(nom) {
     var now = ctx.currentTime;
     if (dernier[nom] !== undefined && now - dernier[nom] < ANTI_REBOND) return;
     var p = SONS[nom];
@@ -630,19 +703,86 @@ try{ document.documentElement.dataset.theme = localStorage.getItem('operationSig
     try { p.forEach(function (v) { voix(v, base + v.t); }); } catch (e) { /* silence plutot qu'erreur */ }
   }
 
+  function viderAttente() {
+    if (!ctx || ctx.state !== 'running' || !attente.length) return;
+    var liste = attente; attente = [];
+    var maintenant = Date.now();
+    liste.forEach(function (e) {
+      if (!muetEtat && maintenant - e.quand <= ATTENTE_MAX_MS) lancer(e.nom);
+    });
+  }
+
+  function jouer(nom) {
+    if (muetEtat || !SONS[nom]) return;
+    if (!ctx) deverrouiller();
+    if (!ctx) return;
+    if (ctx.state !== 'running') {
+      for (var i = 0; i < attente.length; i++) if (attente[i].nom === nom) return;
+      if (attente.length < ATTENTE_NB) attente.push({ nom: nom, quand: Date.now() });
+      reprendre();
+      return;
+    }
+    lancer(nom);
+  }
+
   /* ---- Controle par code, sans oreille ---- */
+  function env(v, t) {             // reproduit exactement enveloppe()
+    var x = t - v.t, fin = v.d - EXTINCTION;
+    if (x < 0 || x > v.d) return 0;
+    if (x <= v.a) return v.g * x / v.a;
+    if (x <= fin) return v.g * Math.pow(0.1, (x - v.a) / (fin - v.a));
+    return v.g * 0.1 * (v.d - x) / EXTINCTION;
+  }
+  function cretePartition(nom) {   // borne haute : toutes les voix en phase, pas de 1 ms
+    var p = SONS[nom], max = 0;
+    for (var t = 0; t <= DUREE_MAX[nom] + 0.001; t += 0.001) {
+      var s = 0;
+      for (var i = 0; i < p.length; i++) s += env(p[i], t);
+      if (s > max) max = s;
+    }
+    return max;
+  }
+  function mesurer() {
+    var m = {};
+    Object.keys(SONS).forEach(function (nom) {
+      var c = cretePartition(nom);
+      m[nom] = {
+        crete: Math.round(c * 1000) / 1000,
+        dBFS_defaut: Math.round(dB(c * VOL_DEFAUT) * 10) / 10,
+        dBFS_max: Math.round(dB(c * VOL_MAX) * 10) / 10
+      };
+    });
+    return m;
+  }
   function verifier() {
     var ecarts = [];
     Object.keys(SONS).forEach(function (nom) {
+      var fondamentales = SONS[nom].filter(function (v) { return v.type === 'osc' && !v.h; });
       SONS[nom].forEach(function (v, i) {
         var id = nom + '[' + i + ']';
-        var fs = v.type === 'osc' ? [v.f0, v.f1 || v.f0] : [v.fc0, v.fc1];
-        fs.forEach(function (f) { if (f < F_MIN || f > F_MAX) ecarts.push(id + ' frequence ' + f + ' Hz hors [80, 2000]'); });
+        if (v.type === 'osc') {
+          var lo = v.h ? F_MIN : F_MIN, hi = v.h ? H_MAX : F_MAX;
+          [v.f0, v.f1 || v.f0].forEach(function (f) {
+            if (f < lo || f > hi) ecarts.push(id + ' frequence ' + f + ' Hz hors [' + lo + ', ' + hi + ']');
+          });
+          if (v.h) {
+            var porteuse = fondamentales.filter(function (o) { return o.t === v.t && Math.abs(o.f0 * 2 - v.f0) < 1; })[0];
+            if (!porteuse) ecarts.push(id + ' harmonique sans fondamentale');
+            else if (v.g >= porteuse.g) ecarts.push(id + ' harmonique plus forte que sa fondamentale');
+          }
+        } else {
+          [v.fc0, v.fc1].forEach(function (f) {
+            if (f < FC_MIN || f > FC_MAX) ecarts.push(id + ' filtre ' + f + ' Hz hors [' + FC_MIN + ', ' + FC_MAX + ']');
+          });
+        }
         if (v.a < ATTAQUE_MIN) ecarts.push(id + ' attaque ' + v.a + ' s < 5 ms');
-        if (v.a >= v.d) ecarts.push(id + ' attaque >= duree');
+        if (v.a >= v.d - EXTINCTION) ecarts.push(id + ' attaque trop longue pour la duree');
         if (v.g > CRETE_MAX) ecarts.push(id + ' crete ' + v.g + ' > 0,5');
-        if (v.t + v.d > DUREE_MAX[nom]) ecarts.push(id + ' finit a ' + (v.t + v.d).toFixed(2) + ' s > ' + DUREE_MAX[nom] + ' s');
+        if (v.t + v.d > DUREE_MAX[nom] + 1e-9) ecarts.push(id + ' finit a ' + (v.t + v.d).toFixed(2) + ' s > ' + DUREE_MAX[nom] + ' s');
       });
+      var c = cretePartition(nom), dDef = dB(c * VOL_DEFAUT), dMax = dB(c * VOL_MAX);
+      if (dDef < DBFS_DEFAUT_MIN || dDef > DBFS_DEFAUT_MAX) ecarts.push(nom + ' crete ' + dDef.toFixed(1) + ' dBFS au volume par defaut, hors [-15, -10]');
+      if (dMax > DBFS_PLAFOND) ecarts.push(nom + ' crete ' + dMax.toFixed(1) + ' dBFS au volume max > -6');
     });
     if (VOL_DEFAUT > VOL_MAX) ecarts.push('volume par defaut > plafond');
     return ecarts; // tableau vide = tous les seuils tenus
@@ -664,11 +804,13 @@ try{ document.documentElement.dataset.theme = localStorage.getItem('operationSig
     muet: function (oui) {
       muetEtat = !!oui;
       ecrire(CLE_MUET, muetEtat ? '1' : '0');
+      if (muetEtat) attente = [];
       if (maitre) maitre.gain.setTargetAtTime(muetEtat ? 0 : volume, ctx.currentTime, 0.02);
       return muetEtat;
     },
     estMuet: function () { return muetEtat; },
-    verifier: verifier
+    verifier: verifier,
+    mesurer: mesurer
   };
 })();
 
