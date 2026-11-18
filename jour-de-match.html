@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Jour de match</title>
+<!--
+  Jour de match : préparation personnelle, lff leçon 35 « Comment prendre de bonnes décisions ».
+  Textes repris de la trame de préparation du 18/11/2026 (parties B, C, D), sans retouche.
+  Composition seulement : espaces insécables avant ? : ; ! et dans les guillemets ; textes de la leçon
+  et versets présentés en panneau, sans guillemets d'encadrement.
+  Aucune ressource externe, aucune image, aucun son, aucun envoi automatique.
+  Réponses gardées sur l'appareil (localStorage, sous try/catch : la page marche sans).
+-->
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#121815; --bg-2:#1A231F; --bg-3:#223029;
+  --fg:#F2F4F1; --fg-2:#B9C4BD; --line:rgba(242,244,241,.62); --line-2:rgba(242,244,241,.16);
+  --accent:#3DDC84; --accent-ink:#0B1A12; --accent-soft:rgba(61,220,132,.16);
+  --paper:#F5F2EA; --ink:#1B201D; --ink-2:#4A524D; --rule:#D9D3C4;
+  --mark:#C6F0D6; --gold:#E8B730; --gold-soft:#F5DB8A; --gold-ink:#5E4304;
+  --field:#FFFFFF; --field-b:#BFC8C2;
+  --stripe-a:#14201A; --stripe-b:#18261F;
+  --read: 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  --cond: 'Avenir Next Condensed', 'Roboto Condensed', 'Bahnschrift SemiCondensed', 'Arial Narrow', sans-serif-condensed, 'Segoe UI', system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--read);font-size:17px;line-height:1.5;
+  display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+  -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* ---------- barre du haut ---------- */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line-2);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar-in{max-width:680px;margin:0 auto;display:flex;align-items:center;gap:12px;min-height:56px}
+.bar-btn{flex:none;background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:15px;font-weight:600;min-height:40px}
+.bar-mid{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.bar-step{font-family:var(--cond);font-stretch:condensed;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-time{font-size:14px;color:var(--fg-2)}
+.bar-count{flex:none;font-size:14px;color:var(--fg-2);font-variant-numeric:tabular-nums}
+.seg{max-width:680px;margin:0 auto;display:flex;gap:4px;padding-bottom:10px}
+.seg i{flex:1;height:4px;border-radius:2px;background:var(--line-2)}
+.seg i.on{background:var(--accent)}
+
+/* ---------- conteneur ---------- */
+.wrap{flex:1 0 auto;width:100%;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 32px}
+.screen{max-width:680px;margin:0 auto;min-width:0}
+.screen > * + *{margin-top:20px}
+.screen:focus{outline:none}
+.kicker{font-family:var(--cond);font-stretch:condensed;font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:15px;color:var(--accent);margin:0}
+h1,h2{margin:0;font-weight:700;line-height:1.2}
+.big-cond{font-family:var(--cond);font-stretch:condensed;font-weight:700;text-transform:uppercase;letter-spacing:.01em;font-size:clamp(30px,9.5vw,72px);line-height:1;margin:0}
+.lead{font-size:clamp(21px,5.4vw,26px);line-height:1.4;font-weight:600;margin:0}
+.muted{color:var(--fg-2)}
+.small{font-size:15px}
+
+/* panneau de lecture */
+.panel{background:var(--paper);color:var(--ink);border-radius:10px;padding:20px 20px 22px;color-scheme:light;font-size:18px;line-height:1.55;min-width:0;overflow-wrap:break-word}
+.panel p{margin:0}
+.panel p + p{margin-top:14px}
+.panel h2{font-size:20px;margin:0 0 12px}
+.panel .ptag{display:block;font-family:var(--cond);font-stretch:condensed;font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:14px;color:var(--ink-2);margin:0 0 10px}
+.panel .ref{font-weight:700;font-size:19px;margin:0 0 4px}
+.panel .ctx{font-size:16px;color:var(--ink-2);border-left:3px solid var(--rule);padding-left:12px;margin:0 0 14px}
+.panel .q-intro{font-weight:700}
+.panel + .panel{margin-top:14px}
+mark{background:var(--mark);color:var(--ink);font-weight:700;padding:0 .15em;border-radius:3px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.note{border:1px solid var(--line-2);border-radius:10px;padding:14px 16px;background:var(--bg-2);color:var(--fg-2);font-size:16px}
+.note strong{color:var(--fg)}
+
+/* écran « à retenir » */
+.retain{border-left:4px solid var(--accent);padding:6px 0 6px 18px}
+.retain p{font-size:clamp(22px,5.8vw,30px);line-height:1.35;font-weight:600;margin:0}
+.retain .src{font-size:15px;font-weight:400;color:var(--fg-2);margin-top:12px}
+
+/* question */
+.qtext{font-size:clamp(20px,5.2vw,24px);line-height:1.4;font-weight:600;margin:0}
+.field{display:block;width:100%;min-height:150px;resize:vertical;background:var(--field);color:var(--ink);color-scheme:light;
+  border:2px solid var(--field-b);border-radius:10px;padding:14px;font-size:18px;line-height:1.5}
+.field.short{min-height:96px}
+.field:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.flabel{display:block;font-weight:600;margin:0 0 8px}
+.fgroup + .fgroup{margin-top:18px}
+.tools{display:flex;flex-direction:column;gap:10px}
+details.tool{border:1px solid var(--line-2);border-radius:10px;background:var(--bg-2)}
+details.tool > summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:600;min-height:48px;display:flex;align-items:center;gap:10px}
+details.tool > summary::-webkit-details-marker{display:none}
+details.tool > summary::before{content:"+";display:inline-block;width:1em;text-align:center;color:var(--accent);font-weight:700}
+details.tool[open] > summary::before{content:"\2212"}
+details.tool .tool-body{padding:0 12px 12px}
+details.tool .tool-body.plain{padding:0 16px 14px;color:var(--fg)}
+.block-btn{width:100%;text-align:left;background:transparent;border:1px dashed var(--line);border-radius:10px;padding:12px 16px;min-height:48px;font-weight:600}
+.blocked{border:1px solid var(--line);border-radius:10px;padding:16px;background:var(--bg-2)}
+.blocked p{margin:0 0 10px}
+.linkish{background:none;border:0;padding:6px 0;color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+
+/* défis */
+.challenge-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.counter{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent)}
+.pairs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pcol{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pcol-h{font-size:14px;color:var(--fg-2);margin:0}
+.card{background:var(--bg-2);border:2px solid var(--line-2);border-radius:10px;padding:14px;text-align:left;min-height:84px;font-size:17px;font-weight:600;line-height:1.35;transition:transform .25s ease,border-color .2s ease}
+.card.sel{border-color:var(--accent);background:var(--bg-3)}
+.card.back{animation:back .35s ease}
+@keyframes back{0%{transform:translateX(0)}40%{transform:translateX(6px)}100%{transform:translateX(0)}}
+.welded{display:flex;flex-direction:column;gap:10px}
+.weld{display:grid;grid-template-columns:1fr 28px 1fr;align-items:stretch;animation:fadein .35s ease}
+.weld .card{border-color:var(--accent);min-height:0;cursor:default}
+.weld .link{align-self:center;height:4px;background:var(--accent);border-radius:2px}
+.done-line{color:var(--accent);font-weight:600;margin:0}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.q-find{display:inline;border-radius:3px;cursor:pointer;
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;transition:background-color .3s ease}
+.q-find.lit{background:var(--mark);font-weight:700}
+.q-find.lit.gold{background:var(--gold-soft);box-shadow:inset 0 -3px 0 var(--gold)}
+.q-find .n{display:none}
+.q-find.lit .n{display:inline-block;font-size:12px;font-weight:700;line-height:1;vertical-align:.35em;margin-right:4px;padding:3px 5px;border-radius:4px;background:var(--ink);color:var(--paper)}
+.q-find.lit.gold .n{background:var(--gold-ink);color:#FFF8E1}
+.hint-line{color:var(--fg-2);font-size:16px;margin:0;animation:fadein .35s ease}
+
+/* objectif */
+.checks{display:flex;flex-direction:column;gap:12px}
+.check{display:flex;gap:14px;align-items:flex-start;background:var(--paper);color:var(--ink);color-scheme:light;border-radius:10px;padding:16px;font-size:18px;line-height:1.5;cursor:pointer}
+.check input{flex:none;width:24px;height:24px;margin:2px 0 0;accent-color:#1F8A50}
+.check .verse-under{display:block;margin-top:10px;font-size:16px;color:var(--ink-2);border-left:3px solid var(--rule);padding-left:12px}
+.check .num{font-weight:700}
+.inline-check{display:flex;gap:12px;align-items:center;margin-top:12px;font-weight:600;cursor:pointer}
+.inline-check input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+
+/* boutons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:12px 22px;border-radius:999px;font-weight:700;font-size:17px;border:2px solid transparent;text-align:center}
+.btn-go{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border-color:var(--line);color:var(--fg)}
+.btn-wide{width:100%}
+.btn[disabled]{opacity:.45;cursor:default}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row > .btn{flex:1 1 180px}
+
+/* barre du bas */
+.nav{position:sticky;bottom:0;z-index:5;background:var(--bg);border-top:1px solid var(--line-2);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:10px calc(10px + env(safe-area-inset-bottom,0px))}
+.nav-in{max-width:680px;margin:0 auto;display:flex;gap:12px}
+.nav-in .btn-ghost{flex:0 0 auto;min-width:110px}
+.nav-in .btn-go{flex:1}
+
+/* ---------- le terrain ---------- */
+.pitch{position:relative;border:2px solid var(--line);border-radius:8px;overflow:hidden;
+  background:repeating-linear-gradient(180deg,var(--stripe-a) 0 56px,var(--stripe-b) 56px 112px);
+  display:grid;grid-template-rows:repeat(5,minmax(84px,auto))}
+.pitch .lines{position:absolute;inset:0;pointer-events:none}
+.pitch .lines i{position:absolute;border:2px solid rgba(242,244,241,.18)}
+.mini{display:block;width:100%;max-width:420px;height:auto}
+.pitch .half{left:0;right:0;top:50%;height:0;border-width:2px 0 0 0!important}
+.pitch .circle{left:50%;top:50%;width:min(34%,130px);aspect-ratio:1;max-width:100%;border-radius:50%;transform:translate(-50%,-50%)}
+.pitch .box-a{top:-2px;left:22%;right:22%;height:44px}
+.pitch .box-b{bottom:-2px;left:22%;right:22%;height:44px}
+.zone{position:relative;z-index:1;display:flex;align-items:center;gap:14px;padding:14px 16px;text-align:left;background:transparent;border:0;border-bottom:1px dashed rgba(242,244,241,.22);color:var(--fg);min-width:0}
+.zone:last-child{border-bottom:0}
+.zone .zn{flex:none;width:34px;height:34px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums;background:var(--bg)}
+.zone .zt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.zone .zl{font-family:var(--cond);font-stretch:condensed;font-weight:700;text-transform:uppercase;letter-spacing:.03em;font-size:19px}
+.zone .zs{font-size:14px;color:var(--fg-2)}
+.zone.done{background:var(--accent);color:var(--accent-ink)}
+.zone.done .zs{color:var(--accent-ink)}
+.zone.done .zn{background:var(--accent-ink);color:var(--accent);border-color:var(--accent-ink)}
+.zone.locked{cursor:default}
+.zone.locked .zl,.zone.locked .zn{opacity:.55}
+.zone.now{box-shadow:inset 0 0 0 3px var(--accent)}
+.ball{flex:none;width:22px;height:22px;border-radius:50%;background:#FFFFFF;border:3px solid var(--bg);box-shadow:0 0 0 2px #FFFFFF;animation:fadein .4s ease}
+.zone.sweep{animation:sweep .45s ease both}
+@keyframes sweep{0%{filter:brightness(1)}45%{filter:brightness(1.35)}100%{filter:brightness(1)}}
+
+@media (min-width:900px){
+  .screen.wide,.is-wide .bar-in{max-width:960px}
+  .pitch{grid-template-rows:none;grid-template-columns:repeat(5,1fr);min-height:280px;
+    background:repeating-linear-gradient(90deg,var(--stripe-a) 0 64px,var(--stripe-b) 64px 128px)}
+  .pitch .half{top:0;bottom:0;left:50%;right:auto;width:0;height:auto;border-width:0 0 0 2px!important}
+  .pitch .circle{width:min(20%,140px)}
+  .pitch .box-a{top:26%;bottom:26%;left:-2px;right:auto;width:7%;height:auto}
+  .pitch .box-b{top:26%;bottom:26%;right:-2px;left:auto;width:7%;height:auto}
+  .zone{flex-direction:column;align-items:flex-start;justify-content:space-between;border-bottom:0;border-right:1px dashed rgba(242,244,241,.22);padding:16px 14px}
+  .zone:last-child{border-right:0}
+  .zone .zl{font-size:20px;overflow-wrap:break-word}
+}
+
+/* feuille de match */
+.sheet{background:var(--paper);color:var(--ink);color-scheme:light;border-radius:12px;padding:22px 20px;min-width:0;overflow-wrap:break-word}
+.sheet h2{font-family:var(--cond);font-stretch:condensed;text-transform:uppercase;letter-spacing:.03em;font-size:28px}
+.sheet .sub{color:var(--ink-2);margin:4px 0 0}
+.sheet .sstep{border-top:2px solid var(--ink);margin-top:22px;padding-top:12px}
+.sheet .sstep h3{margin:0 0 10px;font-family:var(--cond);font-stretch:condensed;text-transform:uppercase;letter-spacing:.05em;font-size:18px}
+.sheet .item + .item{margin-top:14px;padding-top:14px;border-top:1px solid var(--rule)}
+.sheet .iq{font-weight:700;margin:0}
+.sheet .ia{margin:6px 0 0;white-space:pre-wrap}
+.sheet .ia.empty{color:var(--ink-2);font-style:italic}
+.sheet .ia strong{display:block;font-style:normal;color:var(--ink)}
+.sheet .edit{background:none;border:0;padding:6px 0;margin-top:2px;color:#1E6E43;font-weight:700;text-decoration:underline;text-underline-offset:3px;font-size:15px}
+.sheet .toplay{background:#EAE5D8;border-radius:10px;padding:14px 16px;margin-top:22px}
+.sheet .toplay h3{margin:0 0 8px}
+.sheet .toplay ul{margin:0;padding-left:20px}
+.sheet label.nm{display:block;font-weight:600;margin-top:16px}
+.sheet input.nm{display:block;width:100%;margin-top:6px;border:2px solid var(--field-b);border-radius:8px;padding:10px 12px;font-size:18px;background:#fff;color:var(--ink)}
+.status{min-height:1.5em;margin:0;font-weight:600;color:var(--accent)}
+.status.neutral{color:var(--fg)}
+.copybox{width:100%;min-height:180px;background:var(--field);color:var(--ink);color-scheme:light;border:2px solid var(--field-b);border-radius:10px;padding:12px;font-size:15px;line-height:1.45}
+.confirm{border:1px solid var(--line);border-radius:10px;padding:16px;background:var(--bg-2)}
+.confirm p{margin:0 0 12px}
+.reset{text-align:center}
+.reset .linkish{color:var(--fg-2);font-weight:400;font-size:15px}
+
+/* dessin carte */
+.mapfig{margin:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:10px;padding:16px}
+.mapfig svg{display:block;width:100%;max-width:100%;height:auto}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<header class="bar" id="bar">
+  <div class="bar-in">
+    <button class="bar-btn" id="barBtn" type="button" hidden>Terrain</button>
+    <div class="bar-mid">
+      <span class="bar-step" id="barStep">Jour de match</span>
+      <span class="bar-time" id="barTime">Leçon 35 · Comment prendre de bonnes décisions</span>
+    </div>
+    <span class="bar-count" id="barCount"></span>
+  </div>
+  <div class="seg" id="seg" hidden></div>
+</header>
+
+<main class="wrap"><div class="screen" id="app" tabindex="-1"></div></main>
+
+<nav class="nav" id="nav" hidden>
+  <div class="nav-in">
+    <button class="btn btn-ghost" id="prevBtn" type="button">Retour</button>
+    <button class="btn btn-go" id="nextBtn" type="button">Suite</button>
+  </div>
+</nav>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= TEXTES (trame du 18/11/2026, parties B, C, D) ================= */
+
+var T = {
+  rules: "Jour de match. La séance d'étude, c'est le match. Ici, tu te prépares, seul : cinq étapes, environ 15 minutes. Tu lis, tu ouvres les versets, tu réponds avec tes mots. Pas de note, pas de chrono, pas de mauvaise réponse. Si tu bloques, tu le dis : on en parlera pendant le match. À la fin, tu verras ta feuille de match, et c'est toi qui décides de l'envoyer.",
+  intro: "Nous prenons tous des décisions. Certaines, comme le choix d'un conjoint, d'un travail ou d'un logement, peuvent avoir des conséquences importantes sur notre vie. Nos décisions peuvent aussi nous rapprocher ou nous éloigner de Jéhovah. Si nous faisons de bons choix, nous serons heureux et Jéhovah sera fier de nous."
+};
+
+var P1 = '<h2>1. Comment la Bible nous aide-t-elle à prendre de bonnes décisions ?</h2>'
+ + '<p>Avant de prendre une décision, demandez à Jéhovah de vous guider et servez-vous de la Bible pour savoir comment il voit les choses (lire Proverbes 2:3-6). Parfois, vous y trouverez une loi précise. Dans ce cas, la meilleure décision à prendre est d\'obéir à cette loi.</p>'
+ + '<p>Et si la Bible ne vous dit pas clairement ce que vous devez faire ? Jéhovah vous guidera quand même « sur le chemin où [vous devez] marcher » (Isaïe 48:17). En effet, la Bible contient des principes qui peuvent vous aider. Un principe biblique est une vérité essentielle qui montre ce que Dieu pense ou ressent. Dans les récits bibliques, on découvre souvent son point de vue sur tel ou tel sujet. Et quand on sait ce qu\'il pense, on peut alors prendre des décisions qu\'il approuve.</p>';
+
+var FOURQ = [
+  "Quels principes bibliques s'appliquent à la situation ?",
+  "Si je fais ce choix-là, est-ce que j'aurai l'esprit tranquille ?",
+  "Quel effet ma décision aura-t-elle sur les autres ?",
+  "Et surtout, est-ce qu'elle va plaire à Jéhovah ?"
+];
+function p2a(interactive){
+  var qs = FOURQ.map(function(q,i){
+    if(!interactive) return q;
+    /* un span, pas un bouton : un bouton reste une boîte et trahirait les quatre questions en les isolant à la ligne */
+    return '<span role="button" tabindex="0" aria-pressed="false" class="q-find" data-q="'+i+'"><span class="n"></span>'+q+'</span>';
+  }).join(' ');
+  return '<p>La Bible dit : « L\'homme prudent surveille chacun de ses pas » (Proverbes 14:15). Cela veut dire qu\'avant de prendre une décision, il est important de réfléchir. Tout en pesant le pour et le contre des possibilités qui s\'offrent à vous, posez-vous ce genre de questions : « '+qs+' » (Deutéronome 32:29).</p>';
+}
+var P2b = '<p>Jéhovah a le droit de définir ce qui est bien et ce qui est mal. Si nous apprenons à connaître ses lois et ses principes et que nous tenons à les respecter, nous éduquons notre conscience — notre sentiment intérieur de ce qui est bien ou mal (Romains 2:14, 15). Une conscience habituée à se tourner vers le bien nous aidera à prendre de bonnes décisions.</p>';
+var P2H = '<h2>2. À quoi faut-il réfléchir avant de prendre une décision ?</h2>';
+
+var P3 = '<h2>3. Prenez la Bible pour guide</h2><p>Comment les principes bibliques peuvent-ils nous aider à prendre de bonnes décisions ?</p>';
+var P4 = '<h2>4. Éduquez votre conscience pour prendre de bonnes décisions</h2><p>En général, il est facile de faire le bon choix quand la Bible donne un commandement précis. Mais que faire quand ce n\'est pas le cas ? Regarder la VIDÉO et discuter des questions qui suivent.</p>';
+var P4q = '<p class="q-intro">Pourquoi ne faut-il pas demander aux autres de prendre des décisions à notre place ?</p>';
+var P5 = '<h2>5. Tenez compte de la conscience des autres</h2><p>On ne prend pas tous les mêmes décisions. Comment montrer que l\'on tient compte de la conscience des autres ? Voyons deux exemples :</p>';
+var S1 = '<p><strong>Situation 1 :</strong> Une sœur aime bien être en pantalon dans ses activités quotidiennes ou quand elle se retrouve avec des amis. Cette façon de s\'habiller dérange les sœurs de sa nouvelle assemblée.</p>';
+
+var V = {
+  pr2: {ref:"Proverbes 2:3-6", ctx:"Le passage commence par : « Mon fils, si tu fais bon accueil à mes paroles et si tu gardes précieusement mes commandements… »",
+    txt:"si, de plus, tu appelles l'intelligence et si tu élèves la voix pour obtenir le discernement, si tu continues à chercher cela comme l'argent et si tu le recherches sans relâche comme des trésors cachés, alors tu comprendras ce que signifie craindre Jéhovah et tu trouveras la connaissance de Dieu. <mark>Car Jéhovah lui-même donne la sagesse</mark> ; de sa bouche viennent connaissance et discernement."},
+  is48: {ref:"Isaïe 48:17",
+    txt:"Voici ce que dit Jéhovah, ton Racheteur, le Saint d'Israël : « Moi, Jéhovah, je suis ton Dieu, celui qui t'enseigne pour ton bien, <mark>celui qui te guide sur le chemin où tu dois marcher</mark>."},
+  pr14: {ref:"Proverbes 14:15",
+    txt:"Une personne naïve croit tout ce qu'on dit, mais <mark>l'homme prudent surveille chacun de ses pas</mark>."},
+  rm2: {ref:"Romains 2:14, 15",
+    txt:"En effet, quand des gens des nations qui n'ont pas la loi font naturellement ce que la loi demande, ces gens, bien que n'ayant pas la loi, sont une loi pour eux-mêmes. Ce sont ceux-là mêmes qui montrent que le contenu de la loi est écrit dans leur cœur, tandis que leur conscience témoigne avec eux et que, par leurs pensées, ils sont accusés ou même excusés."},
+  ep5: {ref:"Éphésiens 5:15, 16",
+    txt:"Prenez donc bien garde à ne pas vous conduire comme des gens dépourvus de sagesse, mais comme des sages ; <mark>faites le meilleur usage possible de votre temps</mark>, parce que les jours sont mauvais."},
+  he5: {ref:"Hébreux 5:14",
+    txt:"Mais la nourriture solide est pour les gens mûrs, pour ceux dont les facultés de discernement sont <mark>exercées, par l'usage, à distinguer et le bien et le mal</mark>."},
+  rm15: {ref:"Romains 15:1",
+    txt:"Mais nous les forts, nous devons porter les faiblesses de ceux qui ne sont pas forts, et <mark>non faire ce qui nous plaît</mark>."},
+  co10: {ref:"1 Corinthiens 10:23, 24",
+    txt:"<mark>Tout est permis, mais tout n'est pas avantageux</mark>. Tout est permis, mais tout n'est pas encourageant. Que chacun continue à chercher, non pas son avantage personnel, mais celui de l'autre."},
+  jc1: {ref:"Jacques 1:5",
+    txt:"Si donc l'un de vous manque de sagesse, qu'il la demande constamment à Dieu, car il donne à tous généreusement et sans faire de reproche, et elle lui sera donnée."}
+};
+function verse(k, tag){
+  var v = V[k];
+  return '<div class="panel">'+(tag?'<span class="ptag">'+tag+'</span>':'')
+    +'<p class="ref">'+v.ref+'</p>'+(v.ctx?'<p class="ctx">'+v.ctx+'</p>':'')+'<p>'+v.txt+'</p></div>';
+}
+function lesson(html){ return '<div class="panel"><span class="ptag">La leçon</span>'+html+'</div>'; }
+
+/* Questions : texte affiché (partie C, colonne « Ce qu'il lit dans la page ») et indice */
+var Q = {
+  q1:{label:"Question 1", text:"Comment la Bible t'aide-t-elle à prendre une bonne décision ?",
+      hint:"Le paragraphe parle de deux cas. Qu'est-ce qui t'aide dans le premier, et dans le second ?",
+      reread:function(){return lesson(P1);}, verses:["pr2","is48"]},
+  q2:{label:"Question 2", text:"Avant de décider, à quoi faut-il réfléchir ?",
+      hint:"Tu as allumé quatre questions dans le texte. Laquelle compte le plus, d'après le paragraphe ?",
+      reread:function(){return lesson(P2H+p2a(false)+P2b);}, verses:["pr14","rm2"]},
+  q3:{label:"Question 3", text:"« Fais le meilleur usage de ton temps. » Comment tu l'appliques…",
+      subs:[["q3a","… pour lire la Bible régulièrement ?"],["q3b","… pour passer du temps avec ta famille ?"],["q3c","… pour aller aux réunions ?"]],
+      hint:"Le verset ne te demande pas plus de temps. Il te demande d'en faire le meilleur usage. Qu'est-ce que tu ferais passer avant ?",
+      verses:["ep5"]},
+  q4a:{label:"Question 4a", text:"Demander aux autres ce qu'ils feraient, c'est plus simple. Mais qu'est-ce que tu dois savoir distinguer toi-même ?",
+      hint:"Le verset parle de gens qui s'entraînent. À quoi s'entraînent-ils ?",
+      reread:function(){return lesson(P4+P4q);}, verses:["he5"]},
+  q4b:{label:"Question 4b", text:"Quels outils peuvent t'aider à éduquer ta conscience ?",
+      hint:"Pense à ce que tu utilises déjà pour préparer cette leçon.",
+      reread:function(){return lesson(P4+P4q)+'<div class="panel"><span class="ptag">Dans la leçon, l\'encadré « Pour prendre une bonne décision »</span><p>2. Faites des recherches dans la Bible et dans nos publications pour savoir quels principes s\'appliquent à votre situation. Vous pouvez aussi demander l\'aide de chrétiens expérimentés.</p></div>';}, verses:["he5"]},
+  q5a:{label:"Question 5a", text:"Si la sœur suit ces versets, que va-t-elle peut-être décider ?",
+      hint:"Dans 1 Corinthiens 10:24, on cherche l'avantage de qui ?",
+      reread:function(){return lesson(P5+S1);}, verses:["rm15","co10"]},
+  q5b:{label:"Question 5b", text:"Et toi : quelqu'un trouve mal ce que ta conscience te permet. Tu décides quoi ?",
+      hint:"Relis la première phrase de 1 Corinthiens 10:23.",
+      reread:function(){return lesson(P5+S1);}, verses:["rm15","co10"]},
+  oep:{label:"On entend parfois", pre:"Quelqu'un te dit :", quote:"« Ce que pensent les autres, ça m'est bien égal. On a le droit de faire ce qu'on veut ! »",
+      text:"Pourquoi faut-il quand même tenir compte de ce que pense Dieu et de ce que ressentent les autres ?",
+      hint:"Tu as lu aujourd'hui un verset qui commence par \"Tout est permis, mais…\".",
+      verses:["co10","rm15"]}
+};
+var QORDER = [["q1",0],["q2",1],["q3",2],["q4a",3],["q4b",3],["q5a",4],["q5b",4],["oep",4]];
+
+var STEPS = [
+  {name:"Échauffement", min:3, screens:[
+    {t:"hook", hook:"Personne n'entre sur le terrain à froid. Ton échauffement : savoir où chercher la bonne décision."},
+    {t:"html", html:function(){return lesson('<p>'+T.intro+'</p>');}},
+    {t:"html", html:function(){return lesson(P1);}},
+    {t:"html", html:function(){return verse("pr2","Lis le verset");}},
+    {t:"html", html:function(){return verse("is48","Lis le verset");}},
+    {t:"pairs"},
+    {t:"q", q:"q1"},
+    {t:"retain", txt:"Un principe biblique est une vérité essentielle qui montre ce que Dieu pense ou ressent.", src:"Leçon 35, point 1"}
+  ]},
+  {name:"La tactique", min:3, screens:[
+    {t:"hook", hook:"Avant de recevoir le ballon, un bon milieu lève la tête. Il regarde avant d'agir. La Bible le dit avec d'autres mots."},
+    {t:"html", html:function(){return verse("pr14","Lis le verset");}},
+    {t:"four"},
+    {t:"q", q:"q2"},
+    {t:"retain", txt:"Une conscience habituée à se tourner vers le bien nous aidera à prendre de bonnes décisions.", src:"Leçon 35, point 2"}
+  ]},
+  {name:"Première mi-temps", min:3, screens:[
+    {t:"hook", hook:"Un match dure quatre-vingt-dix minutes pour tout le monde. Ce qui change, c'est ce qu'on en fait."},
+    {t:"html", html:function(){return lesson(P3)+'<div class="note">Il y a une vidéo à cet endroit de la leçon (5:54). Tu la regarderas pendant le match, avec la personne avec qui tu étudies.</div>';}},
+    {t:"html", html:function(){return verse("ep5","Lis le verset");}},
+    {t:"q", q:"q3"},
+    {t:"retain", kicker:"Le verset juste après", txt:"« continuez à comprendre quelle est la volonté de Jéhovah »", src:"Éphésiens 5:17"}
+  ]},
+  {name:"Seconde mi-temps", min:3, screens:[
+    {t:"hook", hook:"Sur le terrain, personne ne peut lire le jeu à ta place. C'est l'entraînement qui t'apprend à le faire."},
+    {t:"html", html:function(){return lesson(P4+P4q)+'<div class="note">La vidéo d\'Emma (5:13), tu la verras pendant le match.</div>';}},
+    {t:"html", html:function(){return verse("he5","Lis le verset");}},
+    {t:"q", q:"q4a"},
+    {t:"q", q:"q4b"},
+    {t:"map"}
+  ]},
+  {name:"Coup de sifflet final", min:4, screens:[
+    {t:"hook", hook:"Sur le terrain, il y a le règlement, et il y a l'esprit du jeu : on ne joue pas seul, on pense aux autres."},
+    {t:"html", html:function(){return lesson(P5+S1);}},
+    {t:"html", html:function(){return verse("rm15","Lis les versets")+verse("co10");}},
+    {t:"q", q:"q5a"},
+    {t:"q", q:"q5b", after:'<div class="note">Il y a une deuxième situation dans la leçon. Vous la verrez ensemble pendant le match.</div>'},
+    {t:"q", q:"oep"},
+    {t:"retain", kicker:"En bref", txt:"Pour prendre de bonnes décisions, il faut savoir comment Jéhovah voit les choses et réfléchir à l'effet positif ou négatif que nos actions auront sur les autres.", src:"Leçon 35"},
+    {t:"goal"},
+    {t:"final"}
+  ]}
+];
+
+/* ================= ÉTAT ================= */
+var KEY = "jour-de-match-l35-v1";
+function fresh(){ return {view:"home", step:0, screen:0, done:[false,false,false,false,false], ans:{}, blk:{}, pairs:[], found:[], obj:{c1:false,c2:false,c3:false,txt:"",inc:false}, name:"", fromSheet:false}; }
+var S = fresh();
+try{
+  var raw = window.localStorage.getItem(KEY);
+  if(raw){ var o = JSON.parse(raw); if(o && typeof o === "object"){ for(var k in S){ if(o[k]!==undefined) S[k]=o[k]; } } }
+}catch(e){}
+if(S.view==="whistle") S.view="sheet";
+var storeOK = false;
+function save(){ try{ window.localStorage.setItem(KEY, JSON.stringify(S)); storeOK = true; }catch(e){ storeOK = false; } }
+
+/* ================= OUTILS ================= */
+var app = document.getElementById("app");
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+var reduce = false;
+try{ reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+
+/* espaces insécables : composition typographique, aucun mot changé */
+function typo(root){
+  var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n, list=[];
+  while((n = w.nextNode())){ var p = n.parentNode && n.parentNode.nodeName; if(p!=="TEXTAREA" && p!=="SCRIPT" && p!=="STYLE") list.push(n); }
+  list.forEach(function(t){
+    var v = t.nodeValue.replace(/ ([?:;!»])/g," $1").replace(/« /g,"« ");
+    if(v!==t.nodeValue) t.nodeValue = v;
+  });
+}
+
+/* ================= RENDU ================= */
+var hintTimer = null;
+function render(){
+  if(hintTimer){ clearTimeout(hintTimer); hintTimer=null; }
+  var v = S.view;
+  app.classList.remove("wide"); document.body.classList.remove("is-wide");
+  $("nav").hidden = (v!=="step");
+  $("seg").hidden = (v!=="step");
+  $("barBtn").hidden = !(v==="step" || v==="sheet");
+  if(v==="home") renderHome();
+  else if(v==="rules") renderRules();
+  else if(v==="pitch") renderPitch(null);
+  else if(v==="step") renderStep();
+  else if(v==="sheet") renderSheet();
+  typo(app);
+  window.scrollTo(0,0);
+  try{ app.focus({preventScroll:true}); }catch(e){ app.focus(); }
+  save();
+}
+function setBar(step, time, count){
+  $("barStep").textContent = step; $("barTime").textContent = time; $("barCount").textContent = count||"";
+}
+
+function renderHome(){
+  setBar("Leçon 35","Préparation personnelle","");
+  var started = S.done.some(Boolean) || S.view!=="home" || Object.keys(S.ans).length>0;
+  app.innerHTML =
+    '<p class="kicker">Préparation · Leçon 35</p>'
+   +'<h1 class="big-cond">Jour de match</h1>'
+   +'<p class="lead">Comment prendre de bonnes décisions</p>'
+   +'<p class="muted">Cinq étapes · environ 15 minutes · seul, avant la séance.</p>'
+   +'<div class="row"><button class="btn btn-go" id="go" type="button">'+(started?'Reprendre':'C\'est parti')+'</button></div>';
+  $("go").onclick = function(){ S.view = started ? "pitch" : "rules"; render(); };
+}
+
+function renderRules(){
+  setBar("La règle du jeu","Lis-la une fois","");
+  app.innerHTML = '<p class="kicker">Avant le coup d\'envoi</p>'
+   +'<div class="panel"><p>'+T.rules+'</p></div>'
+   +'<div class="row"><button class="btn btn-go" id="go" type="button">Voir le terrain</button></div>';
+  $("go").onclick = function(){ S.view="pitch"; render(); };
+}
+
+function nextStep(){ for(var i=0;i<5;i++){ if(!S.done[i]) return i; } return -1; }
+
+function pitchHTML(){
+  var nx = nextStep(), h = '<div class="pitch" id="pitch"><div class="lines"><i class="half"></i><i class="circle"></i><i class="box-a"></i><i class="box-b"></i></div>';
+  STEPS.forEach(function(st,i){
+    var cls = S.done[i] ? "done" : (i===nx ? "now" : "locked");
+    var status = S.done[i] ? "Terminée · rouvrir" : (i===nx ? "À jouer · environ "+st.min+" min" : "À venir");
+    h += '<button type="button" class="zone '+cls+'" data-z="'+i+'"'+(cls==="locked"?' aria-disabled="true"':'')+'>'
+      +'<span class="zn">'+(i+1)+'</span><span class="zt"><span class="zl">'+st.name.replace(/mi-temps/i,function(w){return '<span style="white-space:nowrap">'+w+'</span>';})+'</span><span class="zs">'+status+'</span></span>'
+      +(i===nx?'<span class="ball" aria-hidden="true"></span>':'')+'</button>';
+  });
+  return h+'</div>';
+}
+
+function renderPitch(msg){
+  app.classList.add("wide"); document.body.classList.add("is-wide");
+  var nx = nextStep();
+  var count = S.done.filter(Boolean).length;
+  setBar("Le terrain", count+" étape"+(count>1?"s":"")+" sur 5 terminée"+(count>1?"s":""), "");
+  var h = (msg?'<p class="status" role="status">'+msg+'</p>':'')
+    +'<p class="kicker">Leçon 35 · Comment prendre de bonnes décisions</p>'
+    + pitchHTML();
+  if(nx>=0){
+    h += '<div class="row"><button class="btn btn-go" id="go" type="button">'+(count===0?'Commencer l\'étape 1':'Jouer l\'étape '+(nx+1))+'</button></div>';
+  } else {
+    h += '<div class="row"><button class="btn btn-go" id="go" type="button">Ma feuille de match</button></div>';
+  }
+  h += '<p class="small muted">Une zone terminée se rouvre quand tu veux, pour relire ou modifier.</p>'
+    + '<p><button class="linkish" id="rulesLink" type="button">Revoir la règle du jeu</button></p>';
+  app.innerHTML = h;
+  $("go").onclick = function(){ if(nx>=0){ openStep(nx,0); } else { S.view="sheet"; render(); } };
+  $("rulesLink").onclick = function(){ S.view="rules"; render(); };
+  app.querySelectorAll(".zone").forEach(function(z){
+    z.onclick = function(){ var i=+z.getAttribute("data-z"); if(S.done[i] || i===nx){ openStep(i,0); } };
+  });
+}
+
+/* petit terrain de rappel : la zone en cours et le ballon, rien d'autre */
+function miniPitch(cur){
+  var s = '<svg class="mini" viewBox="0 0 320 132" aria-hidden="true" focusable="false">'
+    +'<rect x="2" y="2" width="316" height="128" rx="4" fill="#14201A" stroke="rgba(242,244,241,.55)" stroke-width="2"/>';
+  for(var i=0;i<5;i++){
+    var x = 2 + i*63.2;
+    if(S.done[i] || i===cur) s += '<rect x="'+(x+1)+'" y="3" width="61.2" height="126" fill="'+(S.done[i]?'rgba(61,220,132,.35)':'rgba(61,220,132,.14)')+'"/>';
+    if(i>0) s += '<line x1="'+x+'" y1="3" x2="'+x+'" y2="129" stroke="rgba(242,244,241,.2)" stroke-width="1" stroke-dasharray="3 5"/>';
+  }
+  s += '<line x1="160" y1="2" x2="160" y2="130" stroke="rgba(242,244,241,.55)" stroke-width="2"/>'
+    +'<circle cx="160" cy="66" r="22" fill="none" stroke="rgba(242,244,241,.55)" stroke-width="2"/>'
+    +'<rect x="2" y="38" width="26" height="56" fill="none" stroke="rgba(242,244,241,.55)" stroke-width="2"/>'
+    +'<rect x="292" y="38" width="26" height="56" fill="none" stroke="rgba(242,244,241,.55)" stroke-width="2"/>'
+    +'<circle cx="'+(2+cur*63.2+31.6)+'" cy="66" r="8" fill="#FFFFFF" stroke="#121815" stroke-width="3"/>'
+    +'</svg>';
+  return s;
+}
+
+function openStep(i, sc){ S.view="step"; S.step=i; S.screen=sc; S.fromSheet=false; render(); }
+
+function renderStep(){
+  var st = STEPS[S.step], sc = st.screens[S.screen];
+  setBar(st.name, "Étape "+(S.step+1)+"/5 · environ "+st.min+" min", (S.screen+1)+"/"+st.screens.length);
+  var seg = ""; for(var i=0;i<st.screens.length;i++){ seg += '<i class="'+(i<=S.screen?'on':'')+'"></i>'; }
+  $("seg").innerHTML = seg;
+  $("barBtn").textContent = S.fromSheet ? "Feuille de match" : "Terrain";
+  var last = S.screen===st.screens.length-1;
+  $("prevBtn").textContent = "Retour";
+  $("nextBtn").textContent = last ? (S.step===4 ? "Coup de sifflet final" : "Valider l'étape") : "Suite";
+  var h = "";
+  switch(sc.t){
+    case "hook":
+      h = '<p class="kicker">Étape '+(S.step+1)+' sur 5 · environ '+st.min+' min</p><h1 class="big-cond">'+st.name+'</h1><p class="lead">'+sc.hook+'</p>'+miniPitch(S.step); break;
+    case "html": h = sc.html(); break;
+    case "retain":
+      h = '<p class="kicker">'+(sc.kicker||'À retenir')+'</p><div class="retain"><p>'+sc.txt+'</p><p class="src">'+sc.src+'</p></div>'; break;
+    case "q": h = qHTML(sc.q) + (sc.after||""); break;
+    case "pairs": h = pairsHTML(); break;
+    case "four": h = fourHTML(); break;
+    case "map": h = mapHTML(); break;
+    case "goal": h = goalHTML(); break;
+    case "final":
+      h = '<p class="kicker">Le dernier mot de la leçon</p><div class="retain"><p>Si nous faisons de bons choix, nous serons heureux et Jéhovah sera fier de nous.</p><p class="src">Leçon 35, introduction</p></div>'; break;
+  }
+  app.innerHTML = h;
+  if(sc.t==="q") bindQ(sc.q);
+  if(sc.t==="pairs") bindPairs();
+  if(sc.t==="four") bindFour();
+  if(sc.t==="goal") bindGoal();
+}
+
+/* ---------- questions ---------- */
+function qHTML(id){
+  var q = Q[id], blocked = !!S.blk[id], h = '';
+  if(id==="q3"){
+    h += '<p class="kicker">Le principe</p><div class="retain"><p>Faites le meilleur usage possible de votre temps.</p><p class="src">Leçon 35, point 3</p></div>';
+  }
+  h += '<p class="kicker"'+(id==="q3"?' style="margin-top:32px"':'')+'>'+q.label+'</p>';
+  if(q.quote){
+    h += '<p class="muted">'+q.pre+'</p><p class="lead" style="margin-top:6px;font-size:clamp(23px,6vw,30px)">'+q.quote+'</p>';
+  }
+  h += '<p class="qtext" id="qt-'+id+'">'+q.text+'</p>';
+  if(blocked){
+    h += '<div class="blocked" role="status"><p><strong>Noté : on en parle pendant le match.</strong></p><p class="muted small">Cette question ira dans « À voir pendant le match » sur ta feuille.</p><button class="linkish" type="button" id="unblock">Finalement, je réponds</button></div>';
+  } else if(q.subs){
+    q.subs.forEach(function(s){
+      h += '<div class="fgroup"><label class="flabel" for="a-'+s[0]+'">'+s[1]+'</label><textarea class="field short" id="a-'+s[0]+'" data-k="'+s[0]+'" autocomplete="off" spellcheck="true"></textarea></div>';
+    });
+  } else {
+    h += '<textarea class="field" id="a-'+id+'" data-k="'+id+'" aria-labelledby="qt-'+id+'" placeholder="Ta réponse, avec tes mots" autocomplete="off" spellcheck="true"></textarea>';
+  }
+  h += '<div class="tools">'
+    + '<details class="tool"><summary>Indice</summary><div class="tool-body plain"><p style="margin:0">'+q.hint+'</p></div></details>'
+    + (q.reread ? '<details class="tool"><summary>Relire le paragraphe</summary><div class="tool-body">'+q.reread()+'</div></details>' : '')
+    + '<details class="tool"><summary>Revoir '+(q.verses.length>1?'les versets':'le verset')+'</summary><div class="tool-body">'+q.verses.map(function(k){return verse(k);}).join("")+'</div></details>'
+    + (blocked ? '' : '<button class="block-btn" type="button" id="block">Je bloque, on en parle pendant le match</button>')
+    + '</div>';
+  return h;
+}
+function bindQ(id){
+  app.querySelectorAll("textarea[data-k]").forEach(function(t){
+    var k = t.getAttribute("data-k");
+    t.value = S.ans[k] || "";
+    t.addEventListener("input", function(){ S.ans[k] = t.value; save(); });
+  });
+  var b = $("block"); if(b) b.onclick = function(){ S.blk[id]=true; save(); renderStep(); typo(app); };
+  var u = $("unblock"); if(u) u.onclick = function(){ S.blk[id]=false; save(); renderStep(); typo(app); var f=app.querySelector("textarea"); if(f) f.focus(); };
+}
+
+/* ---------- défi « Deux cas » ---------- */
+var LEFT = [["l1","La Bible donne une loi précise"],["l2","La Bible ne dit pas clairement quoi faire"]];
+var RIGHT = [["r2","Je cherche le principe biblique"],["r1","J'obéis à cette loi"]];
+var MATCH = {l1:"r1", l2:"r2"};
+var sel = null;
+function pairsHTML(){
+  var done = S.pairs, h = '<p class="kicker">Défi · Deux cas</p><p class="qtext">Relie chaque cas à ce que tu fais.</p><p class="muted small" style="margin-top:8px">Touche une carte à gauche, puis sa réponse à droite. Tout est dans le point 1.</p>';
+  h += '<div class="welded">';
+  done.forEach(function(l){
+    var lt = LEFT.filter(function(x){return x[0]===l;})[0][1], rt = RIGHT.filter(function(x){return x[0]===MATCH[l];})[0][1];
+    h += '<div class="weld"><div class="card">'+lt+'</div><span class="link" aria-hidden="true"></span><div class="card">'+rt+'</div></div>';
+  });
+  h += '</div>';
+  if(done.length<2){
+    h += '<div class="pairs"><div class="pcol"><p class="pcol-h">Le cas</p>';
+    LEFT.forEach(function(x){ if(done.indexOf(x[0])<0) h += '<button type="button" class="card" data-c="'+x[0]+'" aria-pressed="false">'+x[1]+'</button>'; });
+    h += '</div><div class="pcol"><p class="pcol-h">Ce que tu fais</p>';
+    RIGHT.forEach(function(x){ var used = done.some(function(l){return MATCH[l]===x[0];}); if(!used) h += '<button type="button" class="card" data-c="'+x[0]+'" aria-pressed="false">'+x[1]+'</button>'; });
+    h += '</div></div><p class="status" id="pairMsg" role="status"></p>';
+  } else {
+    h += '<p class="done-line" role="status">Les deux cas sont reliés.</p>';
+  }
+  return h;
+}
+function bindPairs(){
+  sel = null;
+  app.querySelectorAll(".card[data-c]").forEach(function(c){
+    c.onclick = function(){
+      var id = c.getAttribute("data-c");
+      if(!sel || sel.charAt(0)===id.charAt(0)){
+        app.querySelectorAll(".card[data-c]").forEach(function(o){ o.classList.remove("sel"); o.setAttribute("aria-pressed","false"); });
+        if(sel===id){ sel=null; return; }
+        sel = id; c.classList.add("sel"); c.setAttribute("aria-pressed","true"); return;
+      }
+      var l = sel.charAt(0)==="l" ? sel : id, r = sel.charAt(0)==="r" ? sel : id;
+      if(MATCH[l]===r){
+        S.pairs.push(l); save(); renderStep(); typo(app);
+        var m = $("pairMsg"); if(m) m.textContent = "Relié. Encore un.";
+      } else {
+        var a = app.querySelector('[data-c="'+l+'"]'), b = app.querySelector('[data-c="'+r+'"]');
+        [a,b].forEach(function(x){ x.classList.remove("sel"); x.setAttribute("aria-pressed","false"); x.classList.remove("back"); void x.offsetWidth; x.classList.add("back"); });
+        sel = null;
+        $("pairMsg").classList.add("neutral");
+        $("pairMsg").textContent = "Pas cette paire. Relis le point 1 et essaie une autre carte.";
+      }
+    };
+  });
+}
+
+/* ---------- défi « Les quatre questions » ---------- */
+function fourHTML(){
+  var n = S.found.length;
+  return '<div class="challenge-head"><p class="kicker">Défi · Les quatre questions</p><span class="counter" id="fcount" aria-live="polite">'+n+'/4 trouvées</span></div>'
+    +'<p class="qtext">Dans ce texte, touche les quatre questions qu\'on doit se poser avant de décider.</p>'
+    +'<div class="panel"><span class="ptag">La leçon</span>'+P2H+p2a(true)+P2b+'</div>'
+    +'<p class="hint-line" id="fhint" hidden>Elles se terminent toutes par un point d\'interrogation.</p>'
+    +'<p class="done-line" id="fdone" role="status"'+(n===4?'':' hidden')+'>Les quatre questions sont trouvées. Celle en or est celle qui compte le plus.</p>'
+    +'<details class="tool"><summary>Voir le verset : Romains 2:14, 15</summary><div class="tool-body">'+verse("rm2")+'</div></details>';
+}
+function bindFour(){
+  function paint(){
+    app.querySelectorAll(".q-find").forEach(function(b){
+      var i = +b.getAttribute("data-q"), on = S.found.indexOf(i)>=0;
+      b.classList.toggle("lit", on); b.classList.toggle("gold", on && i===3);
+      b.setAttribute("aria-pressed", on?"true":"false");
+      b.querySelector(".n").textContent = on ? (i+1) : "";
+    });
+    $("fcount").textContent = S.found.length+"/4 trouvées";
+    $("fdone").hidden = S.found.length<4;
+    if(S.found.length===4) $("fhint").hidden = true;
+  }
+  function arm(){
+    if(hintTimer) clearTimeout(hintTimer);
+    if(S.found.length<4) hintTimer = setTimeout(function(){ var h=$("fhint"); if(h && S.found.length<4) h.hidden=false; }, 30000);
+  }
+  app.querySelectorAll(".q-find").forEach(function(b){
+    var hit = function(){
+      var i = +b.getAttribute("data-q");
+      if(S.found.indexOf(i)<0){ S.found.push(i); save(); paint(); arm(); }
+    };
+    b.onclick = hit;
+    b.onkeydown = function(e){ if(e.key==="Enter" || e.key===" "){ e.preventDefault(); hit(); } };
+  });
+  paint(); arm();
+}
+
+/* ---------- carte (légende de la leçon, point 4) ---------- */
+function mapHTML(){
+  return '<p class="kicker">Dans la leçon</p>'
+   +'<figure class="mapfig"><svg viewBox="0 0 320 170" role="img" aria-label="Un trajet tracé sur une carte, d\'un point de départ jusqu\'à l\'arrivée">'
+   +'<g fill="none" stroke="rgba(242,244,241,.18)" stroke-width="1">'
+   +'<path d="M0 40H320M0 90H320M0 140H320M60 0V170M150 0V170M240 0V170"/></g>'
+   +'<path d="M28 140 C 70 140, 70 92, 112 92 S 160 40, 206 46 S 262 98, 292 34" fill="none" stroke="#3DDC84" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 10"/>'
+   +'<circle cx="28" cy="140" r="8" fill="#121815" stroke="#F2F4F1" stroke-width="3"/>'
+   +'<path d="M292 14c-8 0-14 6-14 14 0 10 14 24 14 24s14-14 14-24c0-8-6-14-14-14z" fill="#3DDC84"/><circle cx="292" cy="28" r="5" fill="#121815"/>'
+   +'</svg></figure>'
+   +'<div class="retain"><p>Comme une carte, notre conscience nous aide à prendre de bonnes décisions.</p><p class="src">Leçon 35, point 4</p></div>';
+}
+
+/* ---------- Mon objectif ---------- */
+function goalHTML(){
+  var o = S.obj;
+  return '<p class="kicker">Mon objectif</p>'
+   +'<div class="panel"><p>Penser à une décision que j\'ai à prendre. Suivre les trois étapes de l\'encadré « Pour prendre une bonne décision ».</p></div>'
+   +'<p class="qtext" style="margin-top:32px">Pour prendre une bonne décision</p><p class="muted small" style="margin-top:6px">Coche ce que tu comptes faire.</p>'
+   +'<div class="checks">'
+   +'<label class="check"><input type="checkbox" id="c1"'+(o.c1?' checked':'')+'><span><span class="num">1. </span>Demandez à Jéhovah de vous guider (Jacques 1:5).<span class="verse-under"><strong>Jacques 1:5</strong> · '+V.jc1.txt+'</span></span></label>'
+   +'<label class="check"><input type="checkbox" id="c2"'+(o.c2?' checked':'')+'><span><span class="num">2. </span>Faites des recherches dans la Bible et dans nos publications pour savoir quels principes s\'appliquent à votre situation. Vous pouvez aussi demander l\'aide de chrétiens expérimentés.</span></label>'
+   +'<label class="check"><input type="checkbox" id="c3"'+(o.c3?' checked':'')+'><span><span class="num">3. </span>Réfléchissez aux conséquences de votre décision sur votre conscience et sur la conscience des autres.</span></label>'
+   +'</div>'
+   +'<div><label class="flabel" for="otxt">La décision à laquelle tu penses (tu peux la garder pour toi).</label>'
+   +'<textarea class="field short" id="otxt" placeholder="Facultatif" autocomplete="off"></textarea>'
+   +'<label class="inline-check"><input type="checkbox" id="oinc"'+(o.inc?' checked':'')+'>L\'ajouter à ma feuille de match</label>'
+   +'<p class="muted small" style="margin-top:6px">Sans cette case, elle reste sur ton appareil et n\'apparaît pas sur la feuille.</p></div>';
+}
+function bindGoal(){
+  ["c1","c2","c3"].forEach(function(k){ $(k).onchange = function(){ S.obj[k] = this.checked; save(); }; });
+  var t = $("otxt"); t.value = S.obj.txt || ""; t.oninput = function(){ S.obj.txt = t.value; save(); };
+  $("oinc").onchange = function(){ S.obj.inc = this.checked; save(); };
+}
+
+/* ---------- navigation ---------- */
+$("nextBtn").onclick = function(){
+  var st = STEPS[S.step];
+  if(S.screen < st.screens.length-1){ S.screen++; render(); return; }
+  var wasDone = S.done[S.step];
+  S.done[S.step] = true;
+  if(S.step===4 && !wasDone){ whistle(); return; }
+  if(S.fromSheet){ S.view="sheet"; S.fromSheet=false; render(); return; }
+  S.view="pitch"; render();
+  renderPitch(wasDone ? "Étape enregistrée." : "Étape validée. Prochaine étape : "+(nextStep()>=0?STEPS[nextStep()].name:"ta feuille de match")+".");
+  typo(app);
+};
+$("prevBtn").onclick = function(){
+  if(S.screen>0){ S.screen--; render(); return; }
+  S.view = S.fromSheet ? "sheet" : "pitch"; S.fromSheet=false; render();
+};
+$("barBtn").onclick = function(){
+  if(S.view==="step" && S.fromSheet){ S.view="sheet"; S.fromSheet=false; }
+  else { S.view="pitch"; }
+  render();
+};
+
+function whistle(){
+  S.view="pitch"; save();
+  $("nav").hidden = true; $("seg").hidden = true; $("barBtn").hidden = true;
+  setBar("Coup de sifflet final","Les cinq étapes sont jouées","");
+  app.classList.add("wide"); document.body.classList.add("is-wide");
+  app.innerHTML = '<p class="kicker">Coup de sifflet final</p><h1 class="big-cond" style="font-size:clamp(34px,9vw,56px)">Préparation terminée</h1>'+pitchHTML()
+    +'<p class="status" role="status">Ta feuille de match s\'ouvre.</p>';
+  typo(app); window.scrollTo(0,0);
+  var zones = app.querySelectorAll(".zone");
+  if(!reduce){ zones.forEach(function(z,i){ z.style.animationDelay = (i*90)+"ms"; z.classList.add("sweep"); }); }
+  setTimeout(function(){ S.view="sheet"; render(); }, reduce ? 300 : 1500);
+}
+
+/* ================= FEUILLE DE MATCH ================= */
+function qPlain(id){ var q=Q[id]; return q.quote ? q.pre+" "+q.quote+" "+q.text : q.text; }
+function ansOf(k){ var a = (S.ans[k]||"").trim(); return a; }
+
+function renderSheet(){
+  setBar("Feuille de match","Leçon 35","");
+  $("barBtn").textContent = "Terrain";
+  var blocked = [], h = '<div class="sheet"><h2>Feuille de match</h2><p class="sub">Leçon 35 · Comment prendre de bonnes décisions</p>'
+    +'<label class="nm" for="nm">Ton nom, si tu veux le mettre</label><input class="nm" id="nm" type="text" autocomplete="off" placeholder="Facultatif">';
+  STEPS.forEach(function(st,si){
+    var items = QORDER.filter(function(x){return x[1]===si;});
+    h += '<section class="sstep"><h3>Étape '+(si+1)+' · '+st.name+'</h3>';
+    if(!items.length) h += '<p class="ia empty" style="margin:0">Pas de question à écrire dans cette étape.</p>';
+    items.forEach(function(x){
+      var id = x[0], q = Q[id];
+      h += '<div class="item"><p class="iq">'+esc(qPlain(id))+'</p>';
+      if(S.blk[id]){ blocked.push(qPlain(id)); h += '<p class="ia empty">Je bloque : à voir pendant le match.</p>'; }
+      else if(q.subs){
+        q.subs.forEach(function(s){ var a = ansOf(s[0]); h += '<p class="ia'+(a?'':' empty')+'"><strong>'+esc(s[1])+'</strong>'+(a?esc(a):'pas encore répondu')+'</p>'; });
+      } else { var a = ansOf(id); h += '<p class="ia'+(a?'':' empty')+'">'+(a?esc(a):'pas encore répondu')+'</p>'; }
+      h += '<button class="edit" type="button" data-e="'+id+'">Modifier</button></div>';
+    });
+    if(si===4){
+      var o = S.obj, picks = [];
+      if(o.c1) picks.push("1. Demander à Jéhovah de me guider");
+      if(o.c2) picks.push("2. Faire des recherches");
+      if(o.c3) picks.push("3. Réfléchir aux conséquences");
+      h += '<div class="item"><p class="iq">Mon objectif : les étapes que je compte suivre</p><p class="ia'+(picks.length?'':' empty')+'">'+(picks.length?esc(picks.join("\n")):'aucune cochée pour l\'instant')+'</p>';
+      if(o.inc && (o.txt||"").trim()) h += '<p class="ia"><strong>La décision à laquelle je pense :</strong>'+esc(o.txt.trim())+'</p>';
+      h += '<button class="edit" type="button" data-e="goal">Modifier</button></div>';
+    }
+    h += '</section>';
+  });
+  if(blocked.length){
+    h += '<div class="toplay"><h3>À voir pendant le match</h3><ul>'+blocked.map(function(b){return '<li>'+esc(b)+'</li>';}).join("")+'</ul></div>';
+  }
+  h += '</div>';
+  h += '<p class="muted small">Rien ne part tout seul. Tu choisis.</p>'
+    +'<div class="row"><button class="btn btn-ghost" id="send" type="button">Envoyer ma feuille de match</button><button class="btn btn-ghost" id="keep" type="button">Garder pour moi</button></div>'
+    +'<p class="status" id="sendMsg" role="status"></p>'
+    +'<div id="copyWrap" hidden><label class="flabel" for="copyBox">Le texte de ta feuille</label><textarea class="copybox" id="copyBox" readonly></textarea></div>'
+    +'<p style="text-align:center"><button class="linkish" id="copy" type="button">Copier le texte</button></p>'
+    +'<div class="reset" id="resetZone"><button class="linkish" id="reset" type="button">Recommencer</button></div>';
+  app.innerHTML = h;
+
+  var nm = $("nm"); nm.value = S.name||""; nm.oninput = function(){ S.name = nm.value; save(); };
+  app.querySelectorAll(".edit").forEach(function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-e"), si, sc;
+      STEPS.forEach(function(st,i){ st.screens.forEach(function(s,j){ if((s.t==="q" && s.q===id) || (id==="goal" && s.t==="goal")){ si=i; sc=j; } }); });
+      S.view="step"; S.step=si; S.screen=sc; S.fromSheet=true; render();
+    };
+  });
+  $("send").onclick = send;
+  $("copy").onclick = function(){ copyText(false); };
+  $("keep").onclick = function(){ S.view="pitch"; render(); renderPitch(storeOK ? "Ta feuille reste sur cet appareil. Tu peux la rouvrir quand tu veux." : "Ta feuille reste ici tant que tu gardes cette page ouverte : ce navigateur ne garde pas les réponses."); typo(app); };
+  $("reset").onclick = askReset;
+}
+
+function plainText(){
+  var L = [], o = S.obj, blocked = [];
+  L.push("JOUR DE MATCH · Feuille de match");
+  L.push("Leçon 35 · Comment prendre de bonnes décisions");
+  if((S.name||"").trim()) L.push("De : "+S.name.trim());
+  STEPS.forEach(function(st,si){
+    var items = QORDER.filter(function(x){return x[1]===si;});
+    if(!items.length && si!==4) return;
+    L.push(""); L.push("ÉTAPE "+(si+1)+" · "+st.name.toUpperCase());
+    items.forEach(function(x){
+      var id=x[0], q=Q[id];
+      L.push(""); L.push("Question : "+qPlain(id));
+      if(S.blk[id]){ blocked.push(qPlain(id)); L.push("Ma réponse : je bloque, on en parle pendant le match."); }
+      else if(q.subs){ q.subs.forEach(function(s){ var a=ansOf(s[0]); L.push(s[1]); L.push("Ma réponse : "+(a||"(pas encore répondu)")); }); }
+      else { var a=ansOf(id); L.push("Ma réponse : "+(a||"(pas encore répondu)")); }
+    });
+    if(si===4){
+      var picks=[]; if(o.c1) picks.push("demander à Jéhovah de me guider"); if(o.c2) picks.push("faire des recherches"); if(o.c3) picks.push("réfléchir aux conséquences");
+      L.push(""); L.push("Mon objectif : "+(picks.length?picks.join(", "):"aucune étape cochée pour l'instant"));
+      if(o.inc && (o.txt||"").trim()) L.push("La décision à laquelle je pense : "+o.txt.trim());
+    }
+  });
+  if(blocked.length){ L.push(""); L.push("À VOIR PENDANT LE MATCH"); blocked.forEach(function(b){ L.push("- "+b); }); }
+  return L.join("\n");
+}
+
+function showBox(text){
+  var w = $("copyWrap"), b = $("copyBox");
+  b.value = text; w.hidden = false;
+  try{ b.focus(); b.select(); b.setSelectionRange(0, text.length); }catch(e){}
+}
+function copyText(afterShare){
+  var text = plainText(), msg = $("sendMsg");
+  var done = function(){ msg.textContent = "Texte copié. Colle-le dans ta messagerie"+(afterShare?" pour l'envoyer.":"."); };
+  var fail = function(){ showBox(text); msg.textContent = "Sélectionne le texte ci-dessous, puis copie-le."; };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, fail);
+    } else { fail(); }
+  }catch(e){ fail(); }
+}
+function send(){
+  var text = plainText(), msg = $("sendMsg");
+  if(navigator.share){
+    var p;
+    try{ p = navigator.share({title:"Feuille de match · Leçon 35", text:text}); }catch(e){ p = null; }
+    if(p && p.then){
+      p.then(function(){ msg.textContent = "Partage terminé."; },
+        function(err){
+          if(err && err.name==="AbortError"){ msg.textContent = "Partage annulé. Rien n'est parti."; return; }
+          copyText(true);
+        });
+      return;
+    }
+  }
+  copyText(true);
+}
+
+function askReset(){
+  var z = $("resetZone");
+  z.innerHTML = '<div class="confirm" role="alertdialog" aria-labelledby="rq"><p id="rq"><strong>Tout effacer et recommencer ?</strong> Tes réponses seront supprimées de cet appareil.</p>'
+    +'<div class="row"><button class="btn btn-ghost" id="rno" type="button">Annuler</button><button class="btn btn-ghost" id="ryes" type="button">Oui, tout effacer</button></div></div>';
+  typo(z);
+  $("rno").onclick = function(){ renderSheet(); typo(app); };
+  $("ryes").onclick = function(){ S = fresh(); try{ window.localStorage.removeItem(KEY); }catch(e){} render(); };
+  $("rno").focus();
+}
+
+render();
+})();
+</script>
+</body>
+</html>
