@@ -43,7 +43,7 @@ button{cursor:pointer}
 .bar-btn{flex:none;background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:15px;font-weight:600;min-height:40px}
 .bar-mid{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
 .bar-step{font-family:var(--cond);font-stretch:condensed;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar-time{font-size:14px;color:var(--fg-2)}
+.bar-time{font-size:14px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar-count{flex:none;font-size:14px;color:var(--fg-2);font-variant-numeric:tabular-nums}
 .seg{max-width:680px;margin:0 auto;display:flex;gap:4px;padding-bottom:10px}
 .seg i{flex:1;height:4px;border-radius:2px;background:var(--line-2)}
@@ -221,6 +221,43 @@ details.tool .tool-body.plain{padding:0 16px 14px;color:var(--fg)}
 .mapfig{margin:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:10px;padding:16px}
 .mapfig svg{display:block;width:100%;max-width:100%;height:auto}
 
+/* compteur d'écran : gardé pour les lecteurs d'écran, la barre segmentée le montre */
+.bar-count{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.bar-btn{padding:6px 12px}
+
+/* ballon qui roule sur le terrain */
+.ballx{position:absolute;left:0;top:0;width:26px;height:26px;z-index:3;pointer-events:none;will-change:transform}
+.ballx svg,.ball-svg{display:block;width:100%;height:100%}
+.zone{padding-right:56px}
+@media (min-width:900px){ .zone{padding-right:14px;padding-bottom:52px} }
+
+/* tir au but */
+.shot{display:flex;flex-direction:column;gap:10px}
+.shot-field{position:relative;height:56px;border:1px solid var(--line-2);border-radius:10px;background:repeating-linear-gradient(90deg,var(--stripe-a) 0 40px,var(--stripe-b) 40px 80px);overflow:hidden}
+.shot-field .sb{position:absolute;left:12px;top:15px;width:26px;height:26px;will-change:transform}
+.shot-field .goal{position:absolute;right:10px;top:6px;width:44px;height:44px;transform-origin:right center}
+.shot-msg{margin:0;min-height:1.5em;font-weight:600;color:var(--fg)}
+.shot-msg.goal-ok{color:var(--accent)}
+
+/* passe : la suite du verset */
+.pass-btn{display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;background:var(--bg);color:var(--fg);color-scheme:dark;border:0;border-radius:999px;padding:10px 18px 10px 10px;min-height:48px;font-weight:700;font-size:16px;text-align:left}
+.pass-btn .pb{flex:none;width:26px;height:26px;will-change:transform}
+.pass-rest{animation:fadein .4s ease}
+
+/* célébration sobre de fin d'étape */
+.zone.cheer{animation:cheer .6s ease both}
+@keyframes cheer{0%{filter:brightness(1)}35%{filter:brightness(1.4)}100%{filter:brightness(1)}}
+
+/* Mes notes */
+.notes{position:fixed;inset:0;z-index:30;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:calc(12px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-bottom,0px))}
+.notes-in{max-width:680px;margin:0 auto}
+.notes-in > * + *{margin-top:14px}
+.notes-head{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:56px;border-bottom:1px solid var(--line-2)}
+.notes-head h2{font-family:var(--cond);font-stretch:condensed;text-transform:uppercase;letter-spacing:.03em;font-size:24px}
+body.locked{overflow:hidden}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
@@ -236,9 +273,21 @@ details.tool .tool-body.plain{padding:0 16px 14px;color:var(--fg)}
       <span class="bar-time" id="barTime">Leçon 35 · Comment prendre de bonnes décisions</span>
     </div>
     <span class="bar-count" id="barCount"></span>
+    <button class="bar-btn" id="notesBtn" type="button" aria-haspopup="dialog">Mes notes</button>
   </div>
   <div class="seg" id="seg" hidden></div>
 </header>
+
+<div class="notes" id="notes" role="dialog" aria-modal="true" aria-labelledby="notesT" hidden>
+  <div class="notes-in">
+    <div class="notes-head">
+      <h2 id="notesT">Mes notes</h2>
+      <button class="bar-btn" id="notesClose" type="button">Fermer</button>
+    </div>
+    <p class="small muted" id="notesInfo">Tes notes restent sur ce téléphone. La navigation privée ou le nettoyage du navigateur les effacent.</p>
+    <div id="notesBody"></div>
+  </div>
+</div>
 
 <main class="wrap"><div class="screen" id="app" tabindex="-1"></div></main>
 
@@ -307,10 +356,34 @@ var V = {
   jc1: {ref:"Jacques 1:5",
     txt:"Si donc l'un de vous manque de sagesse, qu'il la demande constamment à Dieu, car il donne à tous généreusement et sans faire de reproche, et elle lui sera donnée."}
 };
+/* Un verset d'écran (avec étiquette) se lit jusqu'au passage mis en valeur ; la passe découvre la suite.
+   Le texte est le même, entier, une fois la passe faite. Dans les volets « Revoir », il est toujours entier. */
 function verse(k, tag){
-  var v = V[k];
+  var v = V[k], body = v.txt, cut = body.indexOf("<mark>");
+  if(tag && cut>0 && !(S.passed && S.passed[k])){
+    body = body.slice(0,cut)+'<span class="pass-rest" data-v="'+k+'" hidden>'+body.slice(cut)+'</span>';
+    return '<div class="panel">'+'<span class="ptag">'+tag+'</span>'
+      +'<p class="ref">'+v.ref+'</p>'+(v.ctx?'<p class="ctx">'+v.ctx+'</p>':'')+'<p>'+body+'</p>'
+      +'<button type="button" class="pass-btn" data-v="'+k+'"><span class="pb">'+ballSVG()+'</span>Fais la passe : lis la suite du verset</button></div>';
+  }
   return '<div class="panel">'+(tag?'<span class="ptag">'+tag+'</span>':'')
-    +'<p class="ref">'+v.ref+'</p>'+(v.ctx?'<p class="ctx">'+v.ctx+'</p>':'')+'<p>'+v.txt+'</p></div>';
+    +'<p class="ref">'+v.ref+'</p>'+(v.ctx?'<p class="ctx">'+v.ctx+'</p>':'')+'<p>'+body+'</p></div>';
+}
+function bindPass(){
+  app.querySelectorAll(".pass-btn").forEach(function(b){
+    b.onclick = function(){
+      var k = b.getAttribute("data-v"), rest = app.querySelector('.pass-rest[data-v="'+k+'"]'), pbx = b.querySelector(".pb");
+      if(b.dataset.busy) return; b.dataset.busy = "1";
+      var w = b.getBoundingClientRect().width - 26 - 20;
+      var a = roll(pbx, 0, 0, w, 0, 480, false);
+      var finish = function(){
+        S.passed[k] = true; save();
+        rest.hidden = false; b.remove();
+        var m = rest.querySelector("mark"); if(m){ m.setAttribute("tabindex","-1"); try{ m.focus({preventScroll:true}); }catch(e){} }
+      };
+      then(a, 480, finish);
+    };
+  });
 }
 function lesson(html){ return '<div class="panel"><span class="ptag">La leçon</span>'+html+'</div>'; }
 
@@ -393,7 +466,7 @@ var STEPS = [
 
 /* ================= ÉTAT ================= */
 var KEY = "jour-de-match-l35-v1";
-function fresh(){ return {view:"home", step:0, screen:0, done:[false,false,false,false,false], ans:{}, blk:{}, pairs:[], found:[], obj:{c1:false,c2:false,c3:false,txt:"",inc:false}, name:"", fromSheet:false}; }
+function fresh(){ return {view:"home", step:0, screen:0, done:[false,false,false,false,false], ans:{}, blk:{}, pairs:[], found:[], obj:{c1:false,c2:false,c3:false,txt:"",inc:false}, name:"", fromSheet:false, ballAt:null, passed:{}}; }
 var S = fresh();
 try{
   var raw = window.localStorage.getItem(KEY);
@@ -409,6 +482,55 @@ var $ = function(id){ return document.getElementById(id); };
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
 var reduce = false;
 try{ reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+
+/* ballon générique : une pastille centrale et cinq pièces au bord, pour que la rotation se voie */
+/* pièces du ballon : un pentagone au centre, cinq au bord (coupés par le cercle), et les coutures entre eux */
+var BALL_PATCHES = (function(){
+  function pent(cx, cy, r, rot){
+    var p = []; for(var i=0;i<5;i++){ var a = (rot + i*72) * Math.PI/180; p.push((cx+r*Math.cos(a)).toFixed(2)+","+(cy+r*Math.sin(a)).toFixed(2)); }
+    return '<polygon points="'+p.join(" ")+'"/>';
+  }
+  var s = pent(12,12,3.5,-90), seams = "";
+  for(var k=0;k<5;k++){
+    var a = (-90 + k*72) * Math.PI/180, c = Math.cos(a), sn = Math.sin(a);
+    s += pent(12+11.4*c, 12+11.4*sn, 3.1, -90 + k*72 + 180);
+    seams += "M"+(12+3.5*c).toFixed(2)+" "+(12+3.5*sn).toFixed(2)+"L"+(12+8.3*c).toFixed(2)+" "+(12+8.3*sn).toFixed(2);
+  }
+  return s + '<path fill="none" d="'+seams+'"/>';
+})();
+var ballN = 0;
+function ballSVG(cls){
+  var id = "bc"+(++ballN);
+  return '<svg class="'+(cls||'ball-svg')+'" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+    +'<defs><clipPath id="'+id+'"><circle cx="12" cy="12" r="11"/></clipPath></defs>'
+    +'<circle cx="12" cy="12" r="11" fill="#FFFFFF"/>'
+    +'<g clip-path="url(#'+id+')" fill="#1B201D" stroke="#1B201D" stroke-width=".8">'
+    + BALL_PATCHES
+    +'</g><circle cx="12" cy="12" r="11" fill="none" stroke="#1B201D" stroke-width="1.2"/>'
+    +'</svg>';
+}
+var BALL = 26;
+/* la suite d'un geste part à la fin de l'animation, ou au plus tard après sa durée : un onglet en arrière-plan ne bloque rien */
+function then(anim, ms, fn){
+  var done = false, go = function(){ if(!done){ done = true; fn(); } };
+  if(anim){ anim.onfinish = go; setTimeout(go, ms + 120); } else setTimeout(go, 0);
+}
+function roll(el, x0, y0, x1, y1, ms, bounce){
+  var d = Math.hypot(x1-x0, y1-y0), dir = (x1-x0)+(y1-y0) >= 0 ? 1 : -1;
+  var rot = dir * d / (Math.PI*BALL) * 360;
+  var end = 'translate('+x1+'px,'+y1+'px) rotate('+rot+'deg)';
+  el.style.transform = end;
+  if(reduce || !el.animate || d < 1) return null;
+  var k = [
+    {transform:'translate('+x0+'px,'+y0+'px) rotate(0deg)', easing:'cubic-bezier(.3,.05,.3,1)'},
+    {transform:end, offset: bounce ? .76 : 1}
+  ];
+  if(bounce){
+    k.push({transform:'translate('+x1+'px,'+(y1-9)+'px) rotate('+rot+'deg)', offset:.88, easing:'ease-in'});
+    k.push({transform:end, offset:1});
+  }
+  return el.animate(k, {duration:ms, fill:'none'});
+}
 
 /* espaces insécables : composition typographique, aucun mot changé */
 function typo(root){
@@ -472,12 +594,40 @@ function pitchHTML(){
     var status = S.done[i] ? "Terminée · rouvrir" : (i===nx ? "À jouer · environ "+st.min+" min" : "À venir");
     h += '<button type="button" class="zone '+cls+'" data-z="'+i+'"'+(cls==="locked"?' aria-disabled="true"':'')+'>'
       +'<span class="zn">'+(i+1)+'</span><span class="zt"><span class="zl">'+st.name.replace(/mi-temps/i,function(w){return '<span style="white-space:nowrap">'+w+'</span>';})+'</span><span class="zs">'+status+'</span></span>'
-      +(i===nx?'<span class="ball" aria-hidden="true"></span>':'')+'</button>';
+      +'</button>';
   });
-  return h+'</div>';
+  return h+'<span class="ballx" id="ballx" aria-hidden="true">'+ballSVG()+'</span></div>';
 }
 
+/* position du ballon : 0 à 4 = zones, 5 = dans le but */
+function ballXY(i){
+  var p = $("pitch"); if(!p) return null;
+  var pr = p.getBoundingClientRect(), horiz = window.matchMedia("(min-width:900px)").matches, r = BALL/2;
+  var z = p.querySelectorAll(".zone")[Math.min(i,4)].getBoundingClientRect();
+  if(i>=5){ /* fin de partie : le ballon file vers le bout du terrain, dans l'angle libre de la dernière zone */
+    return horiz ? {x: z.right-pr.left-10-r*2, y: z.bottom-pr.top-14-r*2}
+                 : {x: z.right-pr.left-18-r*2, y: z.bottom-pr.top-8-r*2};
+  }
+  return horiz ? {x: z.left-pr.left+z.width/2-r, y: z.bottom-pr.top-14-r*2}
+               : {x: z.right-pr.left-18-r*2, y: z.top-pr.top+z.height/2-r};
+}
+function ballTarget(){ var nx = nextStep(); return nx<0 ? 5 : nx; }
+/* pose le ballon ; s'il était ailleurs, il roule jusqu'à sa nouvelle place */
+function placeBall(target, from, done){
+  var el = $("ballx"); if(!el) { if(done) done(); return; }
+  var b = ballXY(target);
+  var a = (typeof from==="number" && from!==target) ? ballXY(from) : null;
+  var anim = a ? roll(el, a.x, a.y, b.x, b.y, 820, true) : roll(el, b.x, b.y, b.x, b.y, 0, false);
+  S.ballAt = target; save();
+  if(done) then(anim, 820, done);
+}
+window.addEventListener("resize", function(){
+  if($("ballx")){ var b = ballXY(S.ballAt==null?ballTarget():S.ballAt); if(b) $("ballx").style.transform = 'translate('+b.x+'px,'+b.y+'px)'; }
+});
+
+var pendingMsg = null, cheerZone = -1;
 function renderPitch(msg){
+  msg = msg || pendingMsg; pendingMsg = null;
   app.classList.add("wide"); document.body.classList.add("is-wide");
   var nx = nextStep();
   var count = S.done.filter(Boolean).length;
@@ -498,6 +648,9 @@ function renderPitch(msg){
   app.querySelectorAll(".zone").forEach(function(z){
     z.onclick = function(){ var i=+z.getAttribute("data-z"); if(S.done[i] || i===nx){ openStep(i,0); } };
   });
+  if(cheerZone>=0 && !reduce){ var cz = app.querySelectorAll(".zone")[cheerZone]; if(cz) cz.classList.add("cheer"); }
+  cheerZone = -1;
+  placeBall(ballTarget(), S.ballAt);
 }
 
 /* petit terrain de rappel : la zone en cours et le ballon, rien d'autre */
@@ -522,7 +675,7 @@ function openStep(i, sc){ S.view="step"; S.step=i; S.screen=sc; S.fromSheet=fals
 
 function renderStep(){
   var st = STEPS[S.step], sc = st.screens[S.screen];
-  setBar(st.name, "Étape "+(S.step+1)+"/5 · environ "+st.min+" min", (S.screen+1)+"/"+st.screens.length);
+  setBar(st.name, "Étape "+(S.step+1)+"/5 · "+st.min+" min env.", (S.screen+1)+"/"+st.screens.length);
   var seg = ""; for(var i=0;i<st.screens.length;i++){ seg += '<i class="'+(i<=S.screen?'on':'')+'"></i>'; }
   $("seg").innerHTML = seg;
   $("barBtn").textContent = S.fromSheet ? "Feuille de match" : "Terrain";
@@ -545,6 +698,7 @@ function renderStep(){
       h = '<p class="kicker">Le dernier mot de la leçon</p><div class="retain"><p>Si nous faisons de bons choix, nous serons heureux et Jéhovah sera fier de nous.</p><p class="src">Leçon 35, introduction</p></div>'; break;
   }
   app.innerHTML = h;
+  bindPass();
   if(sc.t==="q") bindQ(sc.q);
   if(sc.t==="pairs") bindPairs();
   if(sc.t==="four") bindFour();
@@ -571,6 +725,12 @@ function qHTML(id){
   } else {
     h += '<textarea class="field" id="a-'+id+'" data-k="'+id+'" aria-labelledby="qt-'+id+'" placeholder="Ta réponse, avec tes mots" autocomplete="off" spellcheck="true"></textarea>';
   }
+  if(!blocked){
+    h += '<div class="shot"><div class="shot-field" aria-hidden="true"><span class="sb">'+ballSVG()+'</span>'
+      + '<svg class="goal" viewBox="0 0 44 44"><g stroke="rgba(242,244,241,.35)" stroke-width="1"><path d="M8 6V38M16 6V38M24 6V38M32 6V38M8 14H40M8 22H40M8 30H40"/></g><path d="M40 4H6V40H40" fill="none" stroke="#F2F4F1" stroke-width="3" stroke-linejoin="round"/></svg></div>'
+      + '<button class="btn btn-go btn-wide" type="button" id="shoot">Tirer : je valide ma réponse</button>'
+      + '<p class="shot-msg" id="shotMsg" role="status"></p></div>';
+  }
   h += '<div class="tools">'
     + '<details class="tool"><summary>Indice</summary><div class="tool-body plain"><p style="margin:0">'+q.hint+'</p></div></details>'
     + (q.reread ? '<details class="tool"><summary>Relire le paragraphe</summary><div class="tool-body">'+q.reread()+'</div></details>' : '')
@@ -585,6 +745,23 @@ function bindQ(id){
     t.value = S.ans[k] || "";
     t.addEventListener("input", function(){ S.ans[k] = t.value; save(); });
   });
+  var sh = $("shoot");
+  if(sh) sh.onclick = function(){
+    if(sh.dataset.busy) return;
+    var any = false; app.querySelectorAll("textarea[data-k]").forEach(function(t){ if(t.value.trim()) any = true; });
+    var msg = $("shotMsg");
+    if(!any){ msg.className = "shot-msg"; msg.textContent = "Écris d'abord ta réponse avec tes mots, ou touche « Je bloque »."; typo(msg); return; }
+    sh.dataset.busy = "1";
+    var f = app.querySelector(".shot-field"), ball = f.querySelector(".sb"), goal = f.querySelector(".goal");
+    var dx = f.getBoundingClientRect().width - 12 - 26 - 30;
+    var a = roll(ball, 0, 0, dx, -2, 520, false);
+    var after = function(){
+      if(!reduce && goal.animate) goal.animate([{transform:"scaleX(1)"},{transform:"scaleX(1.08)"},{transform:"scaleX(1)"}],{duration:260});
+      msg.className = "shot-msg goal-ok"; msg.textContent = "But. Ta réponse est enregistrée.";
+      setTimeout(function(){ if(document.body.contains(sh) && $("notes").hidden) $("nextBtn").click(); }, reduce ? 500 : 700);
+    };
+    then(a, 520, after);
+  };
   var b = $("block"); if(b) b.onclick = function(){ S.blk[id]=true; save(); renderStep(); typo(app); };
   var u = $("unblock"); if(u) u.onclick = function(){ S.blk[id]=false; save(); renderStep(); typo(app); var f=app.querySelector("textarea"); if(f) f.focus(); };
 }
@@ -713,14 +890,16 @@ function bindGoal(){
 /* ---------- navigation ---------- */
 $("nextBtn").onclick = function(){
   var st = STEPS[S.step];
+  /* un verset pas encore lu en entier : « Suite » fait d'abord la passe, il ne saute jamais la fin du verset */
+  var pb = app.querySelector(".pass-btn"); if(pb){ pb.click(); return; }
   if(S.screen < st.screens.length-1){ S.screen++; render(); return; }
   var wasDone = S.done[S.step];
   S.done[S.step] = true;
   if(S.step===4 && !wasDone){ whistle(); return; }
   if(S.fromSheet){ S.view="sheet"; S.fromSheet=false; render(); return; }
+  if(!wasDone) cheerZone = S.step;
+  pendingMsg = wasDone ? "Étape enregistrée." : "Étape validée. Prochaine étape : "+(nextStep()>=0?STEPS[nextStep()].name:"ta feuille de match")+".";
   S.view="pitch"; render();
-  renderPitch(wasDone ? "Étape enregistrée." : "Étape validée. Prochaine étape : "+(nextStep()>=0?STEPS[nextStep()].name:"ta feuille de match")+".");
-  typo(app);
 };
 $("prevBtn").onclick = function(){
   if(S.screen>0){ S.screen--; render(); return; }
@@ -741,9 +920,49 @@ function whistle(){
     +'<p class="status" role="status">Ta feuille de match s\'ouvre.</p>';
   typo(app); window.scrollTo(0,0);
   var zones = app.querySelectorAll(".zone");
-  if(!reduce){ zones.forEach(function(z,i){ z.style.animationDelay = (i*90)+"ms"; z.classList.add("sweep"); }); }
-  setTimeout(function(){ S.view="sheet"; render(); }, reduce ? 300 : 1500);
+  /* le ballon part de la dernière zone et finit au fond du but, puis le terrain passe au vert, une fois */
+  placeBall(5, 4, function(){
+    if(!reduce){ zones.forEach(function(z,i){ z.style.animationDelay = (i*90)+"ms"; z.classList.add("sweep"); }); }
+    setTimeout(function(){ S.view="sheet"; render(); }, reduce ? 300 : 1300);
+  });
 }
+
+/* ================= MES NOTES (ouvrable à tout moment) ================= */
+var notesReturn = null;
+function notesHTML(){
+  var h = '<div class="sheet">';
+  STEPS.forEach(function(st,si){
+    var items = QORDER.filter(function(x){return x[1]===si;});
+    h += '<section class="sstep"'+(si===0?' style="margin-top:0;border-top:0;padding-top:0"':'')+'><h3>Étape '+(si+1)+' · '+st.name+'</h3>';
+    items.forEach(function(x){
+      var id = x[0], q = Q[id];
+      h += '<div class="item"><p class="iq">'+esc(qPlain(id))+'</p>';
+      if(S.blk[id]) h += '<p class="ia empty">Je bloque : à voir pendant le match.</p>';
+      else if(q.subs) q.subs.forEach(function(s){ var a = ansOf(s[0]); h += '<p class="ia'+(a?'':' empty')+'"><strong>'+esc(s[1])+'</strong>'+(a?esc(a):'pas encore répondu')+'</p>'; });
+      else { var a = ansOf(id); h += '<p class="ia'+(a?'':' empty')+'">'+(a?esc(a):'pas encore répondu')+'</p>'; }
+      h += '</div>';
+    });
+    if(si===4 && (S.obj.txt||"").trim()) h += '<div class="item"><p class="iq">La décision à laquelle je pense</p><p class="ia">'+esc(S.obj.txt.trim())+'</p></div>';
+    h += '</section>';
+  });
+  return h+'</div>';
+}
+function openNotes(){
+  notesReturn = document.activeElement;
+  $("notesBody").innerHTML = notesHTML();
+  $("notesInfo").textContent = "Tes notes restent sur ce téléphone. La navigation privée ou le nettoyage du navigateur les effacent."
+    + (storeOK ? "" : " Ici, le navigateur ne les garde pas : garde la page ouverte.");
+  typo($("notes"));
+  $("notes").hidden = false; document.body.classList.add("locked"); $("notes").scrollTop = 0;
+  $("notesClose").focus();
+}
+function closeNotes(){
+  $("notes").hidden = true; document.body.classList.remove("locked");
+  if(notesReturn && document.body.contains(notesReturn)) try{ notesReturn.focus({preventScroll:true}); }catch(e){}
+}
+$("notesBtn").onclick = openNotes;
+$("notesClose").onclick = closeNotes;
+document.addEventListener("keydown", function(e){ if(e.key==="Escape" && !$("notes").hidden) closeNotes(); });
 
 /* ================= FEUILLE DE MATCH ================= */
 function qPlain(id){ var q=Q[id]; return q.quote ? q.pre+" "+q.quote+" "+q.text : q.text; }
@@ -800,7 +1019,7 @@ function renderSheet(){
   });
   $("send").onclick = send;
   $("copy").onclick = function(){ copyText(false); };
-  $("keep").onclick = function(){ S.view="pitch"; render(); renderPitch(storeOK ? "Ta feuille reste sur cet appareil. Tu peux la rouvrir quand tu veux." : "Ta feuille reste ici tant que tu gardes cette page ouverte : ce navigateur ne garde pas les réponses."); typo(app); };
+  $("keep").onclick = function(){ pendingMsg = storeOK ? "Ta feuille reste sur cet appareil. Tu peux la rouvrir quand tu veux." : "Ta feuille reste ici tant que tu gardes cette page ouverte : ce navigateur ne garde pas les réponses."; S.view="pitch"; render(); };
   $("reset").onclick = askReset;
 }
 
