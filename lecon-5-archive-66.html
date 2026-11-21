@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Archive 66</title>
+
+
+<!--
+  Archive 66, leçon 05 : version famille, à rejouer à la maison.
+  Une seule chose à lire par écran. Aucun clignotement, aucune boucle, aucun compte à rebours. Tout mouvement
+  s'arrête si l'appareil demande « moins de mouvement ». Son : module commun de Milo (sons.js), inclus tel quel.
+  Aucune ressource externe, aucune image extérieure. L'état est gardé dans le navigateur ; « Recommencer » l'efface.
+-->
+
+<style>
+/* thème par défaut : l'archive, brun noyer très sombre, jamais noir pur */
+:root{
+  color-scheme: dark;
+  --bg:#211711; --bg2:#2B1E16; --panneau:#36271D; --panneau-b:#5C4532; --line:#7A5E44;
+  --txt:#F7ECDA; --txt2:#DCC8A8; --ambre-t:#F3C56E; --or-t:#F1D08A; --cire-t:#F0A39A; --vert-t:#A9DDB4;
+  --salle-off:#3A2B20; --salle-offb:#7A6048; --couloir:#4A3729; --etag:#6A4F39; --lueur:rgba(255,196,110,.13); --lueur2:rgba(255,196,110,.24);
+  --creme:#FBF3E2; --encre:#1E2F57; --creme-b:#E2CFA6; --ref:#7A4E12; --mark:rgba(240,190,90,.45);
+  --titre-f: Georgia, 'Times New Roman', serif;
+  --lire-f: Verdana, 'Atkinson Hyperlegible', Tahoma, 'Segoe UI', system-ui, sans-serif;
+}
+/* thème clair, au choix : salle de lecture en plein jour */
+html[data-theme="clair"]{
+  color-scheme: light;
+  --bg:#F2E8D6; --bg2:#E8D9BF; --panneau:#FFF9EE; --panneau-b:#D6C09A; --line:#B89C72;
+  --txt:#2A1C12; --txt2:#5C4330; --ambre-t:#764604; --or-t:#7A560A; --cire-t:#8E2620; --vert-t:#24663F;
+  --salle-off:#E6D8BD; --salle-offb:#A88C64; --couloir:#D2BE9A; --etag:#BFA27A; --lueur:rgba(255,190,90,.20); --lueur2:rgba(255,190,90,.34);
+}
+*{ box-sizing:border-box }
+html,body{ margin:0; color:var(--txt); font-family:var(--lire-f); -webkit-tap-highlight-color:transparent }
+html{ background:var(--bg) }
+body{ min-height:100dvh; background:linear-gradient(180deg, var(--bg2), var(--bg) 60%);
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom:env(safe-area-inset-bottom, 0px) }
+button{ font:inherit; color:inherit }
+[hidden]{ display:none !important }
+
+/* ---------- décor : des étagères dans la pénombre, des lampes ; rien ne bouge ---------- */
+.decor{ position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden }
+.decor .lampes{ position:absolute; inset:0; transition:opacity 1s ease; opacity:.55;
+  background:radial-gradient(circle at 18% -4%, var(--lueur2), transparent 34%), radial-gradient(circle at 82% -2%, var(--lueur2), transparent 30%),
+             radial-gradient(ellipse at 50% 108%, var(--lueur), transparent 55%) }
+body.allume .decor .lampes{ opacity:1 }
+.decor .rayon{ position:absolute; top:0; bottom:0; width:54px; opacity:.5 }
+.decor .rayon.g{ left:0 } .decor .rayon.d{ right:0 }
+.decor .rayon rect{ fill:var(--etag) }
+@media (max-width:620px){ .decor .rayon{ display:none } }
+
+/* ---------- barre du haut ---------- */
+.top{ position:relative; z-index:2; display:flex; align-items:center; gap:10px; height:64px; margin-top:env(safe-area-inset-top, 0px) }
+.top .mini{ display:flex; align-items:center; gap:8px; opacity:0; transition:opacity 1s ease; min-width:0; flex:1 }
+.top .mini.on{ opacity:1 }
+.top .mini svg{ width:38px; height:38px; flex:none }
+.top .mini span{ font-size:16px; font-weight:700; color:var(--ambre-t); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.top .nom{ font-family:var(--titre-f); font-size:18px; font-weight:700; letter-spacing:.04em; color:var(--txt2); white-space:nowrap; padding-right:4px }
+.top .hfin{ font-size:15px; font-weight:700; color:var(--txt2); white-space:nowrap }
+.top .reset{ min-height:48px; padding:0 14px; border:1px solid var(--line); background:var(--panneau); border-radius:12px; font-size:15px; font-weight:700; color:var(--txt2); cursor:pointer }
+@media (max-width:520px){ .top{ gap:6px } .top .nom{ display:none } .top .reset{ padding:0 8px; font-size:13px } .top .mini .cdt{ display:none } .hp{ width:42px }
+  .top .hfin{ font-size:13px } }
+.slot-hp{ display:inline-flex; align-items:center; flex:none; gap:2px }
+.hp{ width:48px; height:48px; border:0; background:transparent; color:var(--txt2); border-radius:12px; display:grid; place-items:center; cursor:pointer; padding:0 }
+.hp svg{ width:28px; height:28px }
+.confirm{ position:fixed; left:0; right:0; top:0; z-index:30; background:var(--panneau); color:var(--txt); border-bottom:1px solid var(--panneau-b);
+  padding:calc(14px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px));
+  display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:19px; box-shadow:0 8px 30px rgba(10,5,0,.3) }
+.confirm span{ flex:1 1 220px }
+
+/* ---------- mouvement : doux, une seconde au plus, jamais en boucle ---------- */
+#app{ position:relative; z-index:1 }
+.screen{ animation:entree .6s cubic-bezier(.2,.8,.2,1) both }
+@keyframes entree{ from{ opacity:0; transform:scale(.985) } to{ opacity:1; transform:none } }
+@keyframes fondu{ from{ opacity:0 } to{ opacity:1 } }
+.halo-t{ position:absolute; border-radius:50%; pointer-events:none; width:16px; height:16px; margin:-8px 0 0 -8px;
+  background:radial-gradient(circle, rgba(255,240,210,.55), rgba(243,197,110,.25) 60%, transparent 70%); animation:halo .7s ease-out forwards; z-index:3 }
+@keyframes halo{ from{ transform:scale(1); opacity:1 } to{ transform:scale(9); opacity:0 } }
+.rebond{ animation:rebond .45s cubic-bezier(.3,1.6,.5,1) }
+@keyframes rebond{ 0%{ transform:scale(1) } 40%{ transform:scale(.95) } 100%{ transform:scale(1) } }
+.brille{ position:relative; overflow:hidden }
+.brille::after{ content:""; position:absolute; top:-20%; bottom:-20%; left:-60%; width:45%; transform:skewX(-20deg);
+  background:linear-gradient(90deg, transparent, rgba(255,240,200,.7), transparent); animation:balaye 1s ease-out forwards; pointer-events:none }
+@keyframes balaye{ from{ left:-60% } to{ left:120% } }
+.particule{ position:absolute; width:8px; height:8px; border-radius:50%; pointer-events:none; z-index:40;
+  background:radial-gradient(circle, #FFF4D6, #F0C45E 60%, rgba(240,196,94,0) 70%); animation:monte 1s ease-out forwards }
+.particule.verte{ background:radial-gradient(circle, #EFFFF2, #9AD6A8 60%, rgba(154,214,168,0) 70%) }
+@keyframes monte{ 0%{ opacity:0; transform:translate(0,0) scale(.6) } 15%{ opacity:1 } 100%{ opacity:0; transform:translate(var(--dx), var(--dy)) scale(1.1) } }
+.pose{ animation:pose .8s cubic-bezier(.3,1.3,.5,1) both }
+@keyframes pose{ from{ transform:scale(1.35) translateY(-14px); opacity:0 } 60%{ transform:scale(.97); opacity:1 } to{ transform:none; opacity:1 } }
+
+/* ---------- boutons ---------- */
+.big{ display:inline-flex; align-items:center; justify-content:center; gap:12px; min-height:76px; min-width:76px; padding:0 30px;
+  border-radius:20px; border:2px solid #E6B865; background:linear-gradient(180deg,#2A4777,#1C3259); color:#FFF7E8;
+  font-family:var(--lire-f); font-size:23px; font-weight:700; letter-spacing:.02em; cursor:pointer;
+  box-shadow:0 0 0 5px rgba(230,184,101,.16), 0 8px 22px rgba(10,5,0,.3); transition:transform .3s ease }
+.big:active{ transform:translateY(2px) }
+.big svg{ width:34px; height:34px; flex:none }
+.big.or{ border-color:#F6D894; background:linear-gradient(180deg,#8C600F,#6F4B0B); box-shadow:0 0 0 5px rgba(246,216,148,.2), 0 8px 22px rgba(10,5,0,.3) }
+.big.cire{ border-color:#F0A39A; background:linear-gradient(180deg,#9C2E27,#74201B); box-shadow:0 0 0 5px rgba(240,163,154,.18), 0 8px 22px rgba(10,5,0,.3) }
+.big[disabled]{ opacity:.45 }
+.btn{ min-height:58px; padding:0 20px; border-radius:16px; border:2px solid var(--line); background:var(--panneau); color:var(--txt);
+  font-family:var(--lire-f); font-size:18px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px }
+.btn svg{ width:24px; height:24px; flex:none }
+.btn.on{ border-color:#4FA36E; background:#DFF2E4; color:#174A2C }
+.btn.leger{ border-color:transparent; background:transparent; color:var(--txt2); font-weight:700 }
+.row{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:center }
+
+/* ---------- une scène = une chose à lire ---------- */
+.scene{ min-height:calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  display:flex; flex-direction:column; align-items:center; gap:22px; padding:6px 0 28px }
+.scene .haut{ display:flex; flex-direction:column; align-items:center; gap:10px; width:100% }
+.hud{ font-family:var(--lire-f); font-size:17px; font-weight:700; letter-spacing:.03em; color:var(--ambre-t); margin:0; text-align:center }
+.pas{ display:flex; gap:7px; flex-wrap:wrap; justify-content:center; max-width:100% }
+.pas i{ width:9px; height:9px; border-radius:50%; border:1.5px solid var(--salle-offb); display:block; transition:background .8s ease }
+.pas i.fait{ background:var(--salle-offb) }
+.pas i.ici{ background:var(--ambre-t); border-color:var(--ambre-t) }
+.milieu{ flex:1; width:100%; max-width:680px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; min-width:0 }
+.milieu.large{ max-width:920px }
+.bas{ width:100%; max-width:680px; display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between }
+.bas .big{ margin-left:auto }
+
+/* panneau de bois clair pour les consignes ; parchemin crème pour tout ce qui se lit */
+.panneau{ width:100%; background:var(--panneau); border:1px solid var(--panneau-b); border-radius:22px; padding:28px 30px; min-width:0;
+  box-shadow:0 10px 30px rgba(10,5,0,.18) }
+.question{ font-family:var(--lire-f); font-size:26px; line-height:1.6; letter-spacing:.02em; word-spacing:.1em; margin:0; color:var(--txt); max-width:24em }
+.phrase{ font-family:var(--lire-f); font-size:26px; line-height:1.6; letter-spacing:.02em; word-spacing:.1em; margin:0; color:var(--txt) }
+.phrase.petite{ font-size:22px; color:var(--txt2) }
+.aide-btn{ margin-top:22px; min-height:48px; padding:0 16px; border-radius:12px; border:1.5px dashed var(--ambre-t); background:transparent; color:var(--ambre-t);
+  font-size:16px; font-weight:700; cursor:pointer }
+.aide{ margin:20px 0 0; font-size:22px; line-height:1.6; letter-spacing:.02em; color:var(--txt2); animation:fondu .6s ease both }
+.lire{ width:100%; background:var(--creme); color:var(--encre); border:1px solid var(--creme-b); border-radius:22px; padding:28px 32px; min-width:0;
+  box-shadow:0 10px 30px rgba(10,5,0,.2) }
+.lire .ref{ font-family:var(--lire-f); font-size:19px; font-weight:700; letter-spacing:.02em; color:var(--ref); margin:0 0 14px }
+.lire .frag{ font-family:var(--lire-f); font-size:24px; line-height:1.7; letter-spacing:.03em; word-spacing:.12em; margin:0; max-width:34em; animation:fondu .6s ease both }
+.lire mark{ background:var(--mark); color:inherit; border-radius:5px; padding:0 .12em; box-decoration-break:clone; -webkit-box-decoration-break:clone; transition:box-shadow 1s ease }
+.lire.dure mark{ box-shadow:0 0 0 3px rgba(240,190,90,.55), 0 0 16px rgba(240,190,90,.65) }
+.lecon{ background:var(--creme); color:var(--encre); border-color:var(--creme-b) }
+.lecon p{ font-family:var(--lire-f); font-size:22px; line-height:1.7; letter-spacing:.02em; word-spacing:.1em; margin:0; max-width:36em; color:var(--encre) }
+.lecon p + p{ margin-top:16px }
+.livre{ display:flex; align-items:center; gap:10px; margin:0; font-size:17px; line-height:1.5; color:var(--txt2); text-align:left;
+  background:var(--panneau); border:1px solid var(--panneau-b); border-radius:14px; padding:10px 16px; max-width:30em }
+.livre svg{ width:30px; height:30px; flex:none }
+.video{ display:flex; gap:18px; align-items:center }
+.video svg{ width:64px; height:64px; flex:none }
+.video .vt{ margin:0 0 6px; font-size:17px; font-weight:700; color:var(--ambre-t) }
+img.lff{ display:block; width:100%; height:auto; border-radius:18px; border:1px solid var(--panneau-b) }
+img.vignette{ max-width:360px; margin:0 auto }
+img.mini{ max-width:220px; margin:0 auto }
+/* le lecteur du bus : le bandeau « 05 » de la leçon est retiré à droite, le lecteur reste entier (trame, partie G) */
+img.bus{ aspect-ratio:3.08; object-fit:cover; object-position:left center }
+img.haute{ max-height:36vh; width:auto; max-width:100%; margin:0 auto }
+.champ, textarea.champ{ width:100%; border-radius:14px; border:1.5px solid var(--line); padding:14px 16px; font-family:var(--lire-f); font-size:22px;
+  background:#FFFDF8; color:#1E2F57; letter-spacing:.02em }
+textarea.champ{ min-height:96px; resize:vertical }
+.liste{ margin:16px 0 0; padding-left:22px; font-size:20px; line-height:1.6 }
+/* repli pour l'adulte : fermé par défaut */
+details.repli{ width:100%; max-width:680px; border-radius:14px; border:1px dashed var(--panneau-b); background:var(--panneau); opacity:.95 }
+details.repli summary{ list-style:none; cursor:pointer; min-height:48px; display:flex; align-items:center; gap:8px; padding:0 16px;
+  font-size:15px; font-weight:700; color:var(--txt2) }
+details.repli summary::-webkit-details-marker{ display:none }
+.repli-c{ padding:0 18px 16px; font-size:17px; line-height:1.55; color:var(--txt) }
+.repli-c p{ margin:0 0 10px }
+.repli-c b{ color:var(--ambre-t) }
+.repli-c .champ{ font-size:18px }
+
+/* ---------- entrée, carte d'archiviste, pli scellé ---------- */
+.centre{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; text-align:center;
+  min-height:calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); padding:8px 0 28px }
+.titre{ font-family:var(--titre-f); font-size:clamp(44px, 8vw, 76px); font-weight:700; letter-spacing:.03em; margin:0; color:var(--txt);
+  text-shadow:0 0 26px rgba(243,197,110,.35) }
+.sous{ font-family:var(--lire-f); font-size:clamp(20px, 3.4vw, 25px); color:var(--txt2); margin:-8px 0 0 }
+.arche{ position:relative; width:min(88vw, 560px); aspect-ratio:16/9; border-radius:280px 280px 16px 16px / 200px 200px 16px 16px; overflow:hidden;
+  border:6px solid #8A6A45; box-shadow:0 0 0 3px #C9A86A, 0 0 34px rgba(243,197,110,.25); background:#2B1E16 }
+.arche img, .arche > svg{ display:block; width:100%; height:100%; object-fit:cover; border:0; border-radius:0 }
+.plaque{ margin:0; padding:12px 26px; border-radius:12px; background:linear-gradient(180deg,#6B4A2E,#4E341F); border:2px solid #C9A86A;
+  color:#FBF0D8; font-family:var(--lire-f); font-size:clamp(20px,3.2vw,24px); font-weight:700; box-shadow:inset 0 2px 6px rgba(0,0,0,.35) }
+.badge{ position:relative; width:min(90vw, 470px); aspect-ratio:85.6/54; border-radius:18px; text-align:left; color:var(--encre);
+  background:linear-gradient(160deg,#FFF8E9,#F3E3C0); border:2px solid #C9A86A; padding:5% 6%; overflow:hidden;
+  box-shadow:0 0 0 6px rgba(201,168,106,.18), 0 14px 34px rgba(10,5,0,.35) }
+.badge .b-ent{ font-weight:700; letter-spacing:.03em; font-size:clamp(14px,2.4vw,17px); color:var(--ref) }
+.badge .b-corps{ display:flex; gap:5%; margin-top:6%; align-items:center }
+.badge .b-av{ width:24%; aspect-ratio:1; flex:none }
+.badge .b-lig{ font-size:clamp(13px,2vw,16px); color:#5C4330; margin:0 0 6px }
+.badge .b-val{ font-family:var(--lire-f); font-weight:700; font-size:clamp(22px,4vw,30px); margin:0; word-break:break-word }
+.badge .b-recit{ font-size:clamp(13px,2vw,16px); color:#5C4330; margin:8px 0 0 }
+.tampon{ position:absolute; right:5%; bottom:8%; padding:6px 14px; border:3px solid #8E2620; border-radius:12px; color:#8E2620; background:rgba(255,248,233,.7);
+  font-weight:700; font-size:clamp(14px,2.6vw,19px); transform:rotate(-6deg) scale(1.5); opacity:0; transition:transform .9s ease, opacity .9s ease }
+.tampon.on{ transform:rotate(-6deg) scale(1); opacity:1 }
+.pli-svg{ width:min(70vw, 300px); height:auto; overflow:visible }
+.pli-svg .sc-r{ transform-box:view-box; transform-origin:100px 64px }
+.pli-svg .m-g, .pli-svg .m-d{ transition:transform .7s ease, opacity .7s ease; transform-box:view-box; transform-origin:100px 64px }
+.pli-svg.brise .m-g{ transform:translate(-14px,10px) rotate(-18deg); opacity:0 }
+.pli-svg.brise .m-d{ transform:translate(14px,10px) rotate(18deg); opacity:0 }
+.feuille{ transform-origin:50% 0; animation:deplie .7s ease both }
+@keyframes deplie{ from{ transform:scaleY(.3); opacity:0 } to{ transform:none; opacity:1 } }
+.feuille.plie{ animation:plie .6s ease forwards }
+@keyframes plie{ from{ transform:none; opacity:1 } to{ transform:scaleY(.25); opacity:0 } }
+.feuille .frag{ white-space:pre-wrap }
+.cachet{ display:flex; align-items:center; gap:10px; justify-content:center; margin:0; font-size:17px; font-weight:700; color:var(--cire-t) }
+.cachet svg{ width:40px; height:40px; flex:none }
+
+/* ---------- le plan de l'archive ---------- */
+.plateau{ display:grid; gap:14px; height:max(600px, calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px));
+  grid-template-rows:minmax(330px,1fr) auto; padding-bottom:12px }
+.plateau .board{ min-height:0; display:flex; justify-content:center }
+.plateau .board svg{ width:100%; height:100%; max-width:560px }
+.plateau .side{ display:flex; flex-direction:column; gap:12px; align-items:stretch; width:100%; max-width:520px; margin:0 auto }
+.plateau .side .big{ width:100% }
+@media (orientation:landscape) and (min-width:700px){
+  .plateau{ grid-template-rows:minmax(0,1fr); grid-template-columns:minmax(0,1fr) 300px }
+  .plateau .side{ justify-content:center }
+}
+.salle .mur{ transition:fill 1s ease }
+.salle .lampe-l{ transition:opacity 1s ease }
+.etat{ font-size:17px; font-weight:700; color:var(--txt2); text-align:center; margin:0 }
+
+/* ---------- salles ---------- */
+.niche{ position:relative; width:min(56vw, 260px); aspect-ratio:4/5; border-radius:130px 130px 16px 16px; display:grid; place-items:center; overflow:hidden;
+  background:radial-gradient(circle at 50% 30%, #5A4029, #2B1E16 75%); border:6px solid #8A6A45; box-shadow:0 0 0 3px #C9A86A, 0 0 30px rgba(243,197,110,.2) }
+.niche.img{ width:min(84vw, 520px); aspect-ratio:16/9; border-radius:260px 260px 16px 16px / 190px 190px 16px 16px }
+.niche > svg.pic{ width:58%; height:auto }
+.niche img{ width:100%; height:100%; object-fit:cover; border:0; border-radius:0 }
+.nom-niv{ font-family:var(--titre-f); font-size:clamp(30px,5vw,42px); font-weight:700; letter-spacing:.06em; margin:0; color:var(--txt); text-align:center }
+.g-sceau{ width:min(46vw, 210px); height:auto; overflow:visible }
+.coeur{ width:min(30vw, 120px); height:auto }
+
+/* cartes et rouleaux à retourner : les deux faces dans la même case, la carte prend la hauteur de la plus haute */
+.flip{ border:0; background:none; padding:0; perspective:1000px; cursor:pointer; min-width:0; width:100%; text-align:center }
+.flip .in{ display:grid; transform-style:preserve-3d; transition:transform .9s ease; height:100% }
+.flip.ouverte .in{ transform:rotateY(180deg) }
+.flip .f{ grid-area:1/1; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius:16px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px; padding:16px 12px; min-width:0 }
+.flip .face{ transform:rotateY(180deg) }
+.rouleaux{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; width:100% }
+.rouleau .f{ background:linear-gradient(180deg,#FBF1DA,#F1DFB6); color:var(--encre); border-radius:10px; min-height:230px;
+  border-top:12px solid #8A5E36; border-bottom:12px solid #8A5E36; box-shadow:0 8px 20px rgba(10,5,0,.25) }
+.rouleau .f svg{ width:62%; max-width:110px; height:auto; flex:none }
+.rouleau .lab{ font-size:20px; font-weight:700; margin:0 }
+.rouleau .ecr{ width:80%; height:auto }
+.rouleau.ouverte .face{ box-shadow:0 0 0 3px #E6B865, 0 0 22px rgba(240,190,90,.6) }
+.ligne-r{ margin:0; font-size:22px; line-height:1.6; color:var(--txt2); text-align:center }
+
+/* la voûte : quatre tiroirs */
+.voute{ display:grid; grid-template-columns:1fr 1fr; gap:18px; width:100% }
+.voute .col{ display:flex; flex-direction:column; gap:12px; min-width:0 }
+.col-lab{ font-family:var(--titre-f); font-size:18px; font-weight:700; letter-spacing:.08em; margin:0; color:var(--txt2) }
+.tiroir{ width:100%; border:0; padding:0; background:none; cursor:pointer; text-align:left; border-radius:14px; transition:box-shadow .8s ease }
+.tiroir .front{ display:flex; align-items:center; gap:12px; min-height:68px; padding:8px 14px; border-radius:12px;
+  background:linear-gradient(180deg,#7A5236,#5E3E28); border:2px solid #3E281A; color:#FBF0D8; box-shadow:inset 0 2px 0 rgba(255,230,190,.18) }
+.tiroir .front .pic{ width:46px; height:46px; flex:none; border-radius:50%; background:#FBF1DA; display:grid; place-items:center }
+.tiroir .front .pic svg{ width:36px; height:36px }
+.tiroir .front .t-nom{ font-family:var(--titre-f); font-size:17px; font-weight:700; letter-spacing:.08em; flex:1 }
+.tiroir .front .poignee{ width:44px; height:12px; border-radius:6px; background:linear-gradient(180deg,#F1D08A,#B98A2E); border:1px solid #6E4E14; flex:none }
+.tiroir .contenu{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .6s ease }
+.tiroir.ouvert .contenu{ grid-template-rows:1fr }
+.tiroir .contenu > div{ overflow:hidden; min-height:0 }
+.tiroir .texte{ margin:8px 6px 0; padding:16px 18px; border-radius:10px; background:var(--creme); color:var(--encre); border:1px solid var(--creme-b);
+  font-size:21px; line-height:1.55; letter-spacing:.02em }
+.tiroir .texte img{ float:left; width:128px; height:auto; border-radius:8px; margin:4px 14px 4px 0 }
+.tiroir .texte::after{ content:""; display:block; clear:both }
+.tiroir.ok{ box-shadow:0 0 0 3px #E6B865, 0 0 22px rgba(240,190,90,.55) }
+
+/* Isaïe 40:8 : la fleur */
+.fleur-z{ display:flex; gap:18px; align-items:center; width:100% }
+.fleur-z .lire{ flex:1 }
+.fleur-b{ border:0; background:none; padding:0; cursor:pointer; flex:none; display:flex; flex-direction:column; align-items:center; gap:6px; color:var(--txt2); font-size:16px; font-weight:700 }
+.fleur{ width:110px; height:auto; overflow:visible }
+.fleur .tige{ transform-box:view-box; transform-origin:50px 146px; transition:transform 1s ease }
+.fleur .p{ transition:fill 1s ease, opacity 1s ease }
+.fleur.fane .tige{ transform:rotate(32deg) }
+.fleur.fane .p{ fill:#B79A86; opacity:.7 }
+
+/* la dictée */
+.modes{ display:flex; gap:10px; flex-wrap:wrap }
+.dessin{ width:100%; height:220px; border-radius:14px; border:1.5px solid var(--line); background:#FBF3E2; touch-action:none; display:block }
+.lettre{ width:100%; background:var(--creme); color:var(--encre); border:1px solid var(--creme-b); border-radius:8px 8px 22px 22px; padding:26px 30px;
+  box-shadow:0 10px 30px rgba(10,5,0,.2); font-size:26px; line-height:1.6; white-space:pre-wrap; word-break:break-word }
+.lettre img{ display:block; width:auto; max-width:100%; height:auto; max-height:22vh; margin:0 auto }
+.qd{ width:100%; display:flex; flex-direction:column; align-items:center; gap:14px; animation:fondu .6s ease both }
+.qd .row .btn{ min-width:120px; font-size:20px }
+.secr{ width:min(80vw, 320px); height:auto }
+
+/* le relais */
+.frise{ position:relative; display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; width:100% }
+.main-b{ border:2px dashed transparent; background:var(--panneau); border-radius:16px; cursor:pointer; padding:10px 8px 14px; min-width:0;
+  display:grid; grid-template-rows:44px auto auto; justify-items:center; align-items:center; gap:6px; color:var(--txt) }
+.main-b.suivante{ border-color:var(--ambre-t) }
+.main-b.toi .m-lab{ color:var(--ambre-t) }
+.main-b .main-svg{ width:70px; height:auto; margin-top:-14px }
+.porte{ position:relative; z-index:1 }
+.main-b .m-lab{ font-size:17px; font-weight:700; line-height:1.35; text-align:center }
+.porte{ width:48px; height:40px; display:grid; place-items:center }
+.porte svg{ width:48px; height:auto }
+@media (max-width:620px){
+  .frise{ grid-template-columns:1fr }
+  .main-b{ grid-template-rows:auto; grid-template-columns:52px 64px minmax(0,1fr); justify-items:start; padding:8px 12px }
+  .main-b .main-svg{ width:56px; margin-top:0 } .main-b .m-lab{ text-align:left }
+}
+
+/* les trois nombres */
+.nombres{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; width:100% }
+.nb .dos{ background:linear-gradient(180deg,#6B4A2E,#4E341F); border:3px solid #C9A86A; min-height:250px }
+.nb .dos svg{ width:56%; max-width:110px; height:auto }
+.nb .dos .k{ font-family:var(--titre-f); font-size:22px; font-weight:700; color:#FBF0D8 }
+.nb .face{ background:var(--creme); color:var(--encre); border:3px solid #C9A86A; justify-content:flex-start }
+.nb .face svg{ width:64px; height:auto; flex:none }
+.nb .gros{ font-size:26px; font-weight:700; color:var(--ref); margin:0; white-space:nowrap }
+.nb .t{ font-size:21px; line-height:1.5; margin:0; text-align:left }
+.nb.ouverte .face{ box-shadow:0 0 0 3px #E6B865, 0 0 20px rgba(240,190,90,.5) }
+.chips{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center }
+.chips span{ padding:8px 16px; border-radius:999px; background:var(--creme); color:var(--ref); font-size:20px; font-weight:700; border:1px solid var(--creme-b); white-space:nowrap }
+.sceaux{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center }
+.sceaux button{ border:2px solid transparent; background:transparent; border-radius:50%; padding:2px; cursor:pointer }
+.sceaux button.on{ border-color:var(--ambre-t) }
+.sceaux svg{ width:76px; height:76px }
+
+/* le volume : les 66 livres deviennent un seul Livre */
+.etagere{ width:100%; border-radius:20px; background:radial-gradient(ellipse at 50% 30%, #4A3424, #241912 80%); border:1px solid #6B4F38; overflow:hidden }
+.etagere svg{ display:block; width:100%; height:auto }
+.vol .lv{ transform-box:fill-box; transform-origin:50% 100%; transition:transform .8s cubic-bezier(.5,0,.3,1), opacity .8s ease }
+.vol.on .lv{ transform:translateX(var(--dx)) scaleY(.7); opacity:0 }
+.vol .grand{ opacity:0; transform-box:fill-box; transform-origin:50% 50% }
+.vol.on .grand{ animation:grand 1.5s ease .5s both }
+@keyframes grand{ 0%{ opacity:0; transform:scale(.4) } 45%{ opacity:1; transform:none } 80%{ opacity:1; transform:none } 100%{ opacity:0; transform:none } }
+.vol .ouvert{ opacity:0; transform-box:fill-box; transform-origin:50% 50% }
+.vol.on .ouvert{ animation:ouvre .7s ease 1.7s both }
+@keyframes ouvre{ from{ opacity:0; transform:scaleX(.3) } to{ opacity:1; transform:none } }
+.vol.deja .lv{ transition:none; transform:translateX(var(--dx)) scaleY(.7); opacity:0 }
+.vol.deja .grand{ animation:none; opacity:0 }
+.vol.deja .ouvert{ animation:none; opacity:1 }
+
+/* les récits */
+.recits{ display:flex; flex-direction:column; gap:10px; width:100% }
+.recits .btn{ justify-content:flex-start; text-align:left; padding:10px 18px; min-height:64px; flex-direction:column; align-items:flex-start; gap:2px; font-size:20px }
+.recits .btn small{ font-size:17px; font-weight:400; color:inherit }
+.carte-mini{ display:flex; align-items:center; gap:14px; width:min(100%, 470px); padding:12px 18px; border-radius:16px; text-align:left;
+  background:linear-gradient(160deg,#FFF8E9,#F3E3C0); border:2px solid #C9A86A; color:var(--encre); box-shadow:0 8px 22px rgba(10,5,0,.3) }
+.carte-mini svg{ width:48px; height:48px; flex:none }
+.carte-mini p{ margin:0 } .cm-nom{ font-size:20px; font-weight:700 } .cm-rc{ font-size:18px; color:#5C4330; margin-top:4px }
+
+/* l'enveloppe Mission 6 */
+.env-b{ border:0; background:none; padding:0; cursor:pointer; border-radius:16px }
+.env{ width:min(70vw, 300px); height:auto; overflow:visible }
+.env .rabat{ transform-box:view-box; transform-origin:60px 18px; transition:transform .9s ease }
+.env.ouverte .rabat{ transform:scaleY(-1) }
+.env .lettre-e{ transition:transform .9s ease .3s; transform:translateY(8px) }
+.env.ouverte .lettre-e{ transform:translateY(-26px) }
+.env .sc-e{ transition:opacity .5s ease }
+.env.ouverte .sc-e{ opacity:0 }
+
+/* ---------- tablette couchée : tout tient sans défiler ---------- */
+@media (orientation:landscape) and (max-height:820px){
+  .scene{ gap:12px; padding-bottom:16px } .milieu{ gap:16px } .scene .haut{ gap:6px }
+  .niche{ width:min(30vh, 220px) } .niche.img{ width:min(64vh, 480px) } .g-sceau{ width:min(26vh, 190px) } .coeur{ width:min(13vh, 100px) }
+  img.haute{ max-height:36vh } .rouleau .f{ min-height:190px } .nb .dos{ min-height:200px }
+  .panneau, .lire{ padding:22px 28px } .aide-btn{ margin-top:14px } .tiroir .texte{ font-size:20px; padding:12px 16px } .tiroir .front{ min-height:60px }
+  .recits{ display:grid; grid-template-columns:1fr 1fr } .recits .btn{ min-height:58px; font-size:19px }
+  .titre{ font-size:clamp(40px, 7vh, 64px) } .arche{ width:min(84vw, 64vh, 520px) }
+}
+
+/* ---------- téléphone ---------- */
+@media (max-width:520px){
+  .panneau, .lire{ padding:22px 20px; border-radius:20px }
+  .question{ font-size:23px } .phrase{ font-size:23px } .phrase.petite{ font-size:20px }
+  .lire .frag{ font-size:22px } .lecon p{ font-size:22px } .lettre{ font-size:23px; padding:22px }
+  .big{ font-size:20px; min-height:68px; padding:0 22px } .btn{ font-size:16px; padding:0 16px }
+  .milieu{ gap:22px } .bas .big{ margin-left:0; flex:1 }
+  .rouleaux{ gap:8px } .rouleau .f{ min-height:180px; padding:12px 6px } .rouleau .lab{ font-size:17px }
+  .voute{ grid-template-columns:1fr } .nombres{ grid-template-columns:1fr } .nb .dos{ min-height:140px } .nb .dos svg{ width:70px }
+  .fleur-z{ flex-direction:column } .fleur{ width:90px }
+  .tiroir .texte{ font-size:20px } .tiroir .texte img{ float:none; display:block; width:100%; max-width:220px; margin:0 0 10px }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.01s !important; animation-iteration-count:1 !important; transition-duration:.01s !important; animation-delay:0s !important; transition-delay:0s !important }
+  .particule, .halo-t{ display:none }
+}
+</style>
+<script>/* thème posé avant le premier affichage : l'archive (sombre) par défaut */
+try{ document.documentElement.dataset.theme = localStorage.getItem('archive66.famille.theme') || 'sombre' }catch(e){ document.documentElement.dataset.theme = 'sombre' }</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+  <radialGradient id="g-cire-or" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#FBE6A6"/><stop offset=".55" stop-color="#E0B356"/><stop offset="1" stop-color="#A9771F"/></radialGradient>
+  <radialGradient id="g-cire-rouge" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#C9524A"/><stop offset=".6" stop-color="#9A2C25"/><stop offset="1" stop-color="#6E1C17"/></radialGradient>
+  <radialGradient id="g-halo"><stop offset="0" stop-color="#FFE9B0" stop-opacity=".7"/><stop offset=".6" stop-color="#F0C45E" stop-opacity=".2"/><stop offset="1" stop-color="#F0C45E" stop-opacity="0"/></radialGradient>
+  <linearGradient id="g-salle" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7B0"/><stop offset="1" stop-color="#E2AE58"/></linearGradient>
+  <linearGradient id="g-cuir" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6E2219"/><stop offset=".5" stop-color="#8E3326"/><stop offset="1" stop-color="#6E2219"/></linearGradient>
+
+  <symbol id="i-fleche" viewBox="0 0 64 64"><path d="M14 32 H46 M36 20 L48 32 L36 44" fill="none" stroke="#FFF7E8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-retour" viewBox="0 0 64 64"><path d="M50 32 H18 M28 20 L16 32 L28 44" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-video" viewBox="0 0 64 64">
+    <rect x="6" y="12" width="52" height="34" rx="7" fill="#4E341F" stroke="#C9A86A" stroke-width="2.5"/>
+    <circle cx="32" cy="29" r="10" fill="#F1D08A"/><path d="M29 23.5 L38 29 L29 34.5 Z" fill="#4E341F"/>
+    <path d="M24 54 H40" stroke="#C9A86A" stroke-width="3" stroke-linecap="round"/></symbol>
+  <symbol id="i-livre" viewBox="0 0 64 64">
+    <path d="M6 48 V18 Q19 13 32 20 Q45 13 58 18 V48 Q45 43 32 50 Q19 43 6 48 Z" fill="#FBF3E2" stroke="#4E341F" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M32 20 V50" stroke="#4E341F" stroke-width="2"/>
+    <path d="M12 27 H26 M12 33 H26 M12 39 H22 M38 27 H52 M38 33 H52 M38 39 H48" stroke="#B89C72" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-petit-livre" viewBox="0 0 48 40">
+    <rect x="6" y="6" width="36" height="28" rx="3" fill="url(#g-cuir)" stroke="#3E140F" stroke-width="2"/>
+    <path d="M10 6 V34" stroke="#3E140F" stroke-width="1.6"/><path d="M18 15 H36 M18 21 H32" stroke="#F1D08A" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-boite" viewBox="0 0 64 64">
+    <rect x="8" y="22" width="48" height="32" rx="5" fill="#8A5E36" stroke="#3E281A" stroke-width="2.6"/>
+    <path d="M6 22 H58 L54 14 H10 Z" fill="#A87444" stroke="#3E281A" stroke-width="2.6" stroke-linejoin="round"/>
+    <rect x="26" y="30" width="12" height="7" rx="2" fill="#F1D08A" stroke="#6E4E14" stroke-width="1.4"/>
+    <path d="M28 44 A4 4 0 1 1 33 47.5 Q32 48.5 32 50" fill="none" stroke="#FBF0D8" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-coeur" viewBox="0 0 64 64">
+    <path d="M32 56 C 12 42 4 32 4 21 A13 13 0 0 1 32 15 A13 13 0 0 1 60 21 C 60 32 52 42 32 56 Z" fill="#E9A49A" stroke="#8E2620" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M16 20 a7 7 0 0 1 8 -4" fill="none" stroke="#FFF7E8" stroke-width="3" stroke-linecap="round" opacity=".7"/></symbol>
+  <symbol id="i-lampe" viewBox="0 0 64 64">
+    <circle cx="32" cy="30" r="26" fill="url(#g-halo)"/>
+    <path d="M18 30 L24 12 H40 L46 30 Z" fill="#F1C66A" stroke="#6E4E14" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M32 30 V50 M22 54 H42" stroke="#6E4E14" stroke-width="3.4" stroke-linecap="round"/>
+    <ellipse cx="32" cy="31" rx="8" ry="3" fill="#FFF4D0"/></symbol>
+  <symbol id="i-avatar" viewBox="0 0 64 64">
+    <rect x="2" y="2" width="60" height="60" rx="14" fill="#3A2A1F" stroke="#C9A86A" stroke-width="2"/>
+    <use href="#i-lampe" x="8" y="8" width="48" height="48"/></symbol>
+  <symbol id="i-cachet" viewBox="0 0 64 64">
+    <path d="M10 18 H54 V50 H10 Z" fill="#F4E6C8" stroke="#8A6A45" stroke-width="2"/><path d="M10 18 L32 34 L54 18" fill="none" stroke="#B89C72" stroke-width="2"/>
+    <circle cx="32" cy="36" r="10" fill="url(#g-cire-rouge)" stroke="#5E1612" stroke-width="1.4"/></symbol>
+
+  <!-- les salles -->
+  <symbol id="lv1" viewBox="0 0 64 64">
+    <path d="M48 6 C 30 10 18 26 14 50 L 20 48 C 26 32 36 20 52 12 Z" fill="#FBF1DA" stroke="#4E341F" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M14 50 L 10 58" stroke="#4E341F" stroke-width="3" stroke-linecap="round"/>
+    <path d="M44 12 C 34 18 26 28 20 44" fill="none" stroke="#B89C72" stroke-width="1.6"/>
+    <path d="M34 56 H56" stroke="#F1D08A" stroke-width="3" stroke-linecap="round"/></symbol>
+  <symbol id="lv2" viewBox="0 0 64 64">
+    <path d="M6 58 V26 A26 20 0 0 1 58 26 V58 Z" fill="#6B4A2E" stroke="#F1D08A" stroke-width="2.4"/>
+    <rect x="14" y="30" width="16" height="11" rx="2" fill="#8A5E36" stroke="#F1D08A" stroke-width="1.6"/><rect x="34" y="30" width="16" height="11" rx="2" fill="#8A5E36" stroke="#F1D08A" stroke-width="1.6"/>
+    <rect x="14" y="44" width="16" height="11" rx="2" fill="#8A5E36" stroke="#F1D08A" stroke-width="1.6"/><rect x="34" y="44" width="16" height="11" rx="2" fill="#8A5E36" stroke="#F1D08A" stroke-width="1.6"/>
+    <path d="M19 35.5 H25 M39 35.5 H45 M19 49.5 H25 M39 49.5 H45" stroke="#F1D08A" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="lv3" viewBox="0 0 64 64">
+    <rect x="10" y="8" width="36" height="48" rx="3" fill="#FBF1DA" stroke="#4E341F" stroke-width="2.4"/>
+    <path d="M16 18 H40 M16 25 H40 M16 32 H34" stroke="#1E2F57" stroke-width="2" stroke-linecap="round"/>
+    <path d="M56 22 L36 46 L32 50 L34 44 L54 20 Z" fill="#F1C66A" stroke="#4E341F" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="lv4" viewBox="0 0 64 64">
+    <path d="M32 6 L54 14 V30 C54 44 44 52 32 58 C20 52 10 44 10 30 V14 Z" fill="#6B4A2E" stroke="#F1D08A" stroke-width="2.4" stroke-linejoin="round"/>
+    <use href="#i-petit-livre" x="16" y="18" width="32" height="27"/></symbol>
+  <symbol id="lv5" viewBox="0 0 64 64">
+    <circle cx="32" cy="30" r="22" fill="#3F6A8A" stroke="#F1D08A" stroke-width="2.4"/>
+    <path d="M10 30 H54 M32 8 C 22 18 22 42 32 52 M32 8 C 42 18 42 42 32 52" fill="none" stroke="#BFD8E8" stroke-width="1.6"/>
+    <use href="#i-petit-livre" x="20" y="40" width="24" height="20"/></symbol>
+
+  <!-- les trois rouleaux -->
+  <symbol id="p-baton" viewBox="0 0 64 64"><path d="M30 58 V22 C30 10 46 8 46 20 C46 26 40 27 38 23" fill="none" stroke="#5E3E28" stroke-width="4.6" stroke-linecap="round"/></symbol>
+  <symbol id="p-filet" viewBox="0 0 64 64"><path d="M10 14 Q32 6 54 14 L46 54 Q32 58 18 54 Z" fill="none" stroke="#2F5F86" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M14 26 Q32 20 50 26 M16 38 Q32 33 48 38 M24 12 L22 55 M32 9 V57 M40 12 L42 55" fill="none" stroke="#2F5F86" stroke-width="2"/></symbol>
+  <symbol id="p-couronne" viewBox="0 0 64 64"><path d="M10 46 L8 18 L22 32 L32 12 L42 32 L56 18 L54 46 Z" fill="#F1C66A" stroke="#6E4E14" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M10 46 H54 V54 H10 Z" fill="#E0B356" stroke="#6E4E14" stroke-width="2.6"/></symbol>
+  <!-- le même sceau, au dos des trois rouleaux -->
+  <symbol id="i-sceau-auteur" viewBox="0 0 64 64">
+    <path d="M32 4 L35 8 L40 6 L42 11 L47 11 L48 16 L53 18 L52 23 L56 27 L53 31 L56 36 L52 39 L53 45 L48 46 L47 51 L42 51 L40 56 L35 54 L32 58 L29 54 L24 56 L22 51 L17 51 L16 46 L11 45 L12 39 L8 36 L11 31 L8 27 L12 23 L11 18 L16 16 L17 11 L22 11 L24 6 L29 8 Z" fill="url(#g-cire-or)" stroke="#8A5E12" stroke-width="1.6" stroke-linejoin="round"/>
+    <circle cx="32" cy="31" r="16" fill="none" stroke="#9C6B16" stroke-width="1.6"/>
+    <path d="M20 36 V26 Q26 23 32 27 Q38 23 44 26 V36 Q38 33 32 37 Q26 33 20 36 Z" fill="#FBE6A6" stroke="#6E4E14" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M32 27 V37 M32 20 V22 M25 21 L26 23 M39 21 L38 23" stroke="#6E4E14" stroke-width="1.6" stroke-linecap="round"/></symbol>
+
+  <!-- les tiroirs -->
+  <symbol id="t-feuille" viewBox="0 0 64 64"><path d="M12 8 H40 L48 16 V40 L44 44 L46 50 L40 52 L38 58 H12 Z" fill="#F1DFB6" stroke="#5E3E28" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M18 18 H38 M18 26 H40 M18 34 H34" stroke="#B89C72" stroke-width="2" stroke-linecap="round"/><path d="M50 46 l3 2 M52 54 l2 3 M46 58 l1 3" stroke="#8A6A45" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="t-main" viewBox="0 0 64 64"><path d="M14 50 C 8 38 10 24 18 22 L 20 34 L 22 14 C 22 10 28 10 28 14 L 28 30 L 30 10 C 30 6 36 6 36 10 L 36 30 L 38 14 C 38 10 44 10 44 14 L 44 34 L 48 26 C 50 22 56 24 54 30 L 46 50 Z" fill="#B89C72" stroke="#3E281A" stroke-width="2.4" stroke-linejoin="round"/></symbol>
+  <symbol id="t-plume" viewBox="0 0 64 64"><path d="M52 6 C 34 10 22 26 18 48 L 24 46 C 30 30 40 18 56 10 Z" fill="#FBF1DA" stroke="#3E281A" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M18 48 L 14 56" stroke="#3E281A" stroke-width="3" stroke-linecap="round"/><path d="M8 58 H36" stroke="#1E2F57" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="t-bouclier" viewBox="0 0 64 64"><path d="M32 6 L54 14 V30 C54 44 44 52 32 58 C20 52 10 44 10 30 V14 Z" fill="#E0B356" stroke="#3E281A" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M32 14 V50 M18 26 H46" stroke="#6E4E14" stroke-width="2.4" stroke-linecap="round"/></symbol>
+
+  <!-- les trois nombres -->
+  <symbol id="n-globe" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="#3F6A8A" stroke="#F1D08A" stroke-width="2.4"/>
+    <path d="M8 32 H56 M32 8 C 20 20 20 44 32 56 M32 8 C 44 20 44 44 32 56 M12 20 H52 M12 44 H52" fill="none" stroke="#BFD8E8" stroke-width="1.6"/></symbol>
+  <symbol id="n-bulles" viewBox="0 0 64 64"><path d="M6 10 H38 V32 H18 L10 40 V32 H6 Z" fill="#FBF1DA" stroke="#F1D08A" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M26 30 H58 V50 H54 V58 L46 50 H26 Z" fill="#E0B356" stroke="#FBF1DA" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M12 18 H32 M12 24 H26 M32 38 H52 M32 44 H46" stroke="#5E3E28" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="n-pile" viewBox="0 0 64 64"><rect x="10" y="44" width="44" height="10" rx="2" fill="#8E3326" stroke="#F1D08A" stroke-width="1.8"/>
+    <rect x="14" y="33" width="38" height="10" rx="2" fill="#2F4A6B" stroke="#F1D08A" stroke-width="1.8"/><rect x="8" y="22" width="42" height="10" rx="2" fill="#5B6B3A" stroke="#F1D08A" stroke-width="1.8"/>
+    <rect x="16" y="11" width="34" height="10" rx="2" fill="#8A6A2F" stroke="#F1D08A" stroke-width="1.8"/></symbol>
+
+  <!-- une main qui reçoit, sans visage -->
+  <symbol id="i-main" viewBox="0 0 80 80">
+    <g fill="#E3C49B" stroke="#5C4330" stroke-width="2.4" stroke-linejoin="round">
+      <rect x="20" y="16" width="9" height="36" rx="4.5"/><rect x="30" y="8" width="9" height="42" rx="4.5"/>
+      <rect x="40" y="10" width="9" height="40" rx="4.5"/><rect x="50" y="18" width="9" height="34" rx="4.5"/>
+      <path d="M20 40 L 13 30 Q 8 25 5 30 Q 3 34 7 40 L 16 60 Q 22 76 40 76 Q 59 76 59 58 V 42 Z"/></g>
+    <path d="M30 62 Q 40 66 50 60" fill="none" stroke="#B08A60" stroke-width="1.8" stroke-linecap="round"/></symbol>
+</defs>
+</svg>
+
+<div class="decor" aria-hidden="true">
+  <div class="lampes"></div>
+  <svg class="rayon g" id="rayonG" viewBox="0 0 54 1000" preserveAspectRatio="xMinYMin slice"></svg>
+  <svg class="rayon d" id="rayonD" viewBox="0 0 54 1000" preserveAspectRatio="xMaxYMin slice"></svg>
+</div>
+
+<div class="confirm" id="confirm" hidden>
+  <span>Tout effacer et recommencer l'archive ?</span>
+  <button class="btn" id="ouiReset">Oui, recommencer</button>
+  <button class="btn leger" id="nonReset">Non</button>
+</div>
+
+<header class="top">
+  <div class="mini" id="miniBadge"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#i-avatar" width="64" height="64"/></svg><span id="miniNom">Archiviste</span></div>
+  <div class="nom">Archive 66</div>
+  
+  <span class="slot-hp">
+    <button class="hp" id="btnTheme" aria-label="Passer en thème clair"><svg viewBox="0 0 24 24" aria-hidden="true"><g id="icTheme"></g></svg></button>
+    <button class="hp" id="btnHP" aria-label="Son activé"><svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor"/>
+      <g id="hpOn"><path d="M16 9 Q18.5 12 16 15 M18.5 6.5 Q23 12 18.5 17.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
+      <g id="hpOff" style="display:none"><path d="M16.5 9.5 L21.5 14.5 M21.5 9.5 L16.5 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></g>
+    </svg></button>
+  </span>
+  <button class="reset" id="btnReset">Recommencer</button>
+</header>
+
+<main id="app"></main>
+
+<!-- MODULE SONS : contenu de sons-communs/sons.js (Milo), inséré tel quel par construire.ps1. Ne pas modifier : veto de Milo. -->
+<script id="module-sons">
+/* =====================================================================
+   Sons communs des lecons - sons.js (version 2, 05/11/2026)
+   Auteur : Milo (son). Module autonome, Web Audio API, aucun fichier audio,
+   aucune ressource externe. Expose window.SonsV (meme API que Protocole V,
+   plus SonsV.mesurer() pour le controle sans oreille).
+
+   Joueur tres sensible au bruit, ecoute sur haut-parleur de tablette.
+   Seuils fixes, verifies par SonsV.verifier() (tableau vide = tout est tenu) :
+     NIVEAUX (crete en sortie, borne haute : somme des cretes des voix en phase)
+     - volume par defaut : chaque son entre -15 et -10 dBFS (cible -12)
+     - volume maximal    : aucun son au-dessus de -6 dBFS
+     - garde-fou de sortie : lineaire jusqu'a -6 dBFS, arrondi au-dessus,
+       plafond absolu -2,5 dBFS. Pas de compresseur (son gain de rattrapage
+       automatique faussait les dBFS de la version 1).
+     SPECTRE (petits haut-parleurs : rien d'utile sous ~400 Hz)
+     - fondamentale entre 440 et 2000 Hz
+     - harmonique ajoutee (2x) jusqu'a 3200 Hz, toujours plus faible que sa fondamentale
+     - filtre du souffle entre 500 et 2500 Hz
+     - passe-bas general a 4 kHz : rien d'aigu ni de percant
+     ENVELOPPE
+     - attaque >= 5 ms (pas de clic sec)
+     - decroissance exponentielle jusqu'a -20 dB, puis extinction lineaire en 20 ms
+     - crete par voix <= 0,5 avant le gain maitre
+     - durees max : pop 0,16 s · carte 0,18 s · etape 0,40 s · paire 0,40 s
+                    sceau 0,70 s · victoire 1,40 s
+     - rien en boucle, rien en fond ; un meme son ne se relance pas a moins de 60 ms
+   Chaine : voix -> bus -> passe-bas 4 kHz -> gain maitre -> garde-fou -> sortie.
+   Premier toucher : le son demande avant que le contexte soit "running" est mis
+   en file d'attente (3 au plus) et joue des que le contexte demarre, s'il a
+   moins de 0,6 s ; plus vieux, il est abandonne pour ne pas tomber a contretemps.
+   Tonalite unique : do majeur.
+   ===================================================================== */
+(function () {
+  'use strict';
+
+  var CLE_MUET = 'sonsCommuns.muet';
+  var CLE_MUET_V1 = 'protocoleV.sons.muet';      // le choix "muet" fait en lecon 3 est respecte
+  var CLE_VOL = 'sonsCommuns.volume';            // nouvelle cle : l'ancien 0,15 enregistre ne revient pas
+  var VOL_DEFAUT = 0.5, VOL_MAX = 0.7;           // -6 dB et -3,1 dB de gain maitre
+  var DBFS_DEFAUT_MIN = -15, DBFS_DEFAUT_MAX = -10, DBFS_PLAFOND = -6;
+  var F_MIN = 440, F_MAX = 2000, H_MAX = 3200, FC_MIN = 500, FC_MAX = 2500;
+  var ATTAQUE_MIN = 0.005, CRETE_MAX = 0.5, EXTINCTION = 0.02;
+  var ANTI_REBOND = 0.06, VOIX_MAX = 14, ATTENTE_MAX_MS = 600, ATTENTE_NB = 3;
+
+  /* Lecture d'une tablette en mode silencieux (iPadOS 17+) : 'playback' fait jouer
+     les sons malgre le mode silencieux ; le bouton haut-parleur du jeu reste le
+     seul interrupteur. Mettre 'ambient' pour respecter le mode silencieux. */
+  var SESSION_AUDIO = 'playback';
+
+  var DUREE_MAX = { pop: 0.16, carte: 0.18, etape: 0.40, paire: 0.40, sceau: 0.70, victoire: 1.40 };
+
+  /* ---- Partitions. t = depart (s), a = attaque (s), d = duree totale de la voix (s),
+          g = crete, f0 -> f1 = glissando (Hz), fc0 -> fc1 = balayage du filtre (Hz),
+          h = 1 : harmonique ajoutee a une fondamentale. ---- */
+  var SONS = {
+    // bulle qui monte : mi5 -> si5 glisse, avec son octave, 140 ms
+    pop: [
+      { type: 'osc', onde: 'sine', f0: 659.25,  f1: 987.77,  t: 0, a: 0.008, d: 0.14, g: 0.38 },
+      { type: 'osc', onde: 'sine', f0: 1318.51, f1: 1975.53, t: 0, a: 0.008, d: 0.08, g: 0.10, h: 1 }
+    ],
+    // carte : souffle filtre haut-medium + petit appui do5 -> la4, 140 ms
+    carte: [
+      { type: 'bruit', filtre: 'bandpass', fc0: 1200, fc1: 2200, q: 1.0, t: 0, a: 0.012, d: 0.14, g: 0.30 },
+      { type: 'osc', onde: 'triangle', f0: 523.25, f1: 440.00, t: 0, a: 0.006, d: 0.10, g: 0.16 }
+    ],
+    // etape : souffle doux + sol5 tres leger, decale de 50 ms pour ne pas s'empiler sur le pop
+    etape: [
+      { type: 'bruit', filtre: 'lowpass', fc0: 700, fc1: 1800, q: 0.7, t: 0.05, a: 0.10, d: 0.33, g: 0.30 },
+      { type: 'osc', onde: 'sine', f0: 783.99, t: 0.05, a: 0.03, d: 0.30, g: 0.16 }
+    ],
+    // paire trouvee : do5 puis sol5 (quinte montante), 340 ms
+    paire: [
+      { type: 'osc', onde: 'sine', f0: 523.25,  t: 0,    a: 0.008, d: 0.20, g: 0.34 },
+      { type: 'osc', onde: 'sine', f0: 1046.50, t: 0,    a: 0.008, d: 0.12, g: 0.10, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 783.99,  t: 0.10, a: 0.008, d: 0.24, g: 0.34 },
+      { type: 'osc', onde: 'sine', f0: 1567.98, t: 0.10, a: 0.008, d: 0.14, g: 0.08, h: 1 }
+    ],
+    // sceau : carillon mi5 - sol5 - do6, 640 ms
+    sceau: [
+      { type: 'osc', onde: 'sine', f0: 659.25,  t: 0,    a: 0.006, d: 0.40, g: 0.26 },
+      { type: 'osc', onde: 'sine', f0: 1318.51, t: 0,    a: 0.006, d: 0.20, g: 0.07, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 783.99,  t: 0.11, a: 0.006, d: 0.40, g: 0.26 },
+      { type: 'osc', onde: 'sine', f0: 1567.98, t: 0.11, a: 0.006, d: 0.20, g: 0.06, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 1046.50, t: 0.22, a: 0.006, d: 0.42, g: 0.28 },
+      { type: 'osc', onde: 'sine', f0: 2093.00, t: 0.22, a: 0.006, d: 0.20, g: 0.06, h: 1 }
+    ],
+    // victoire : arpege do5 mi5 sol5, puis accord do6 / sol5 / do5 tenu (remonte d'une
+    // octave par rapport a la v1 : sol4 et do4 ne sortent pas d'un haut-parleur de tablette), 1,35 s
+    victoire: [
+      { type: 'osc', onde: 'sine', f0: 523.25,  t: 0,    a: 0.008, d: 0.26, g: 0.24 },
+      { type: 'osc', onde: 'sine', f0: 1046.50, t: 0,    a: 0.008, d: 0.14, g: 0.05, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 659.25,  t: 0.13, a: 0.008, d: 0.26, g: 0.24 },
+      { type: 'osc', onde: 'sine', f0: 1318.51, t: 0.13, a: 0.008, d: 0.14, g: 0.05, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 783.99,  t: 0.26, a: 0.008, d: 0.30, g: 0.25 },
+      { type: 'osc', onde: 'sine', f0: 1567.98, t: 0.26, a: 0.008, d: 0.14, g: 0.05, h: 1 },
+      { type: 'osc', onde: 'sine', f0: 1046.50, t: 0.40, a: 0.020, d: 0.95, g: 0.20 },
+      { type: 'osc', onde: 'sine', f0: 783.99,  t: 0.40, a: 0.030, d: 0.95, g: 0.12 },
+      { type: 'osc', onde: 'sine', f0: 523.25,  t: 0.40, a: 0.030, d: 0.95, g: 0.12 }
+    ]
+  };
+
+  /* ---- Etat ---- */
+  var ctx = null, bus = null, maitre = null, bruitBuf = null;
+  var actives = 0, dernier = {}, attente = [];
+  var muetLu = lire(CLE_MUET);
+  var muetEtat = muetLu !== null ? muetLu === '1' : lire(CLE_MUET_V1) === '1';
+  var volume = borne(parseFloat(lire(CLE_VOL)), VOL_DEFAUT);
+
+  function lire(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function ecrire(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* stockage indisponible */ } }
+  function borne(v, defaut) { if (typeof v !== 'number' || isNaN(v)) return defaut; return Math.max(0, Math.min(VOL_MAX, v)); }
+  function dB(x) { return x > 0 ? 20 * Math.log(x) / Math.LN10 : -Infinity; }
+
+  /* ---- Garde-fou : identite jusqu'a 0,5 (-6 dBFS), arrondi au-dessus, plafond 0,75 ---- */
+  function courbeGardeFou() {
+    var n = 2048, c = new Float32Array(n);
+    for (var i = 0; i < n; i++) {
+      var x = (i / (n - 1)) * 2 - 1, ax = Math.abs(x), y;
+      if (ax <= 0.5) y = ax;
+      else { var u = (ax - 0.5) / 0.25, e2 = Math.exp(2 * u); y = 0.5 + 0.25 * ((e2 - 1) / (e2 + 1)); }
+      c[i] = x < 0 ? -y : y;
+    }
+    return c;
+  }
+
+  /* ---- Session audio de la tablette ---- */
+  function sessionAudio() {
+    try {
+      if (navigator.audioSession && navigator.audioSession.type !== SESSION_AUDIO) {
+        navigator.audioSession.type = SESSION_AUDIO;
+      }
+    } catch (e) { /* non pris en charge : sans effet */ }
+  }
+
+  /* ---- Demarrage au premier toucher ---- */
+  function construire() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    sessionAudio();
+    ctx = new AC();
+    bus = ctx.createGain(); bus.gain.value = 1;
+    var passeBas = ctx.createBiquadFilter();
+    passeBas.type = 'lowpass'; passeBas.frequency.value = 4000; passeBas.Q.value = 0;
+    maitre = ctx.createGain();
+    maitre.gain.value = muetEtat ? 0 : volume;
+    var gardeFou = ctx.createWaveShaper();
+    gardeFou.curve = courbeGardeFou(); gardeFou.oversample = 'none';
+    bus.connect(passeBas); passeBas.connect(maitre); maitre.connect(gardeFou); gardeFou.connect(ctx.destination);
+    bruitBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.5), ctx.sampleRate);
+    var dat = bruitBuf.getChannelData(0);
+    for (var i = 0; i < dat.length; i++) dat[i] = Math.random() * 2 - 1;
+    ctx.onstatechange = viderAttente;
+  }
+
+  function reprendre() {
+    if (!ctx) return;
+    if (ctx.state === 'suspended' || ctx.state === 'interrupted') {
+      try {
+        var p = ctx.resume();
+        if (p && typeof p.then === 'function') p.then(viderAttente, function () {});
+      } catch (e) { /* rien */ }
+    }
+  }
+
+  function deverrouiller() {
+    try {
+      if (!ctx) {
+        construire();
+        if (!ctx) return;
+        // anciens iOS : un tampon muet joue pendant le geste deverrouille la sortie
+        var s = ctx.createBufferSource();
+        s.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+        s.connect(ctx.destination); s.start(0);
+      }
+      sessionAudio();
+      reprendre();
+      viderAttente();
+    } catch (e) { /* pas d'audio : le jeu reste muet, sans erreur */ }
+  }
+  ['pointerdown', 'touchend', 'click', 'keydown'].forEach(function (ev) {
+    window.addEventListener(ev, deverrouiller, { capture: true, passive: true });
+  });
+
+  /* ---- Moteur ---- */
+  function enveloppe(g, t0, v) {
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(v.g, t0 + v.a);
+    g.gain.exponentialRampToValueAtTime(v.g * 0.1, t0 + v.d - EXTINCTION);
+    g.gain.linearRampToValueAtTime(0, t0 + v.d);
+  }
+
+  function voix(v, t0) {
+    var g = ctx.createGain(), src;
+    if (v.type === 'osc') {
+      src = ctx.createOscillator();
+      src.type = v.onde;
+      src.frequency.setValueAtTime(v.f0, t0);
+      if (v.f1) src.frequency.exponentialRampToValueAtTime(v.f1, t0 + Math.min(0.06, v.d));
+      src.connect(g);
+    } else {
+      src = ctx.createBufferSource();
+      src.buffer = bruitBuf;
+      var f = ctx.createBiquadFilter();
+      f.type = v.filtre; f.Q.value = v.q;
+      f.frequency.setValueAtTime(v.fc0, t0);
+      f.frequency.exponentialRampToValueAtTime(v.fc1, t0 + v.d * 0.6);
+      src.connect(f); f.connect(g);
+    }
+    enveloppe(g, t0, v);
+    g.connect(bus);
+    actives++;
+    src.onended = function () { actives--; try { g.disconnect(); } catch (e) {} };
+    src.start(t0);
+    src.stop(t0 + v.d + 0.02);
+  }
+
+  function lancer(nom) {
+    var now = ctx.currentTime;
+    if (dernier[nom] !== undefined && now - dernier[nom] < ANTI_REBOND) return;
+    var p = SONS[nom];
+    if (actives + p.length > VOIX_MAX) return;
+    dernier[nom] = now;
+    var base = now + 0.01;
+    try { p.forEach(function (v) { voix(v, base + v.t); }); } catch (e) { /* silence plutot qu'erreur */ }
+  }
+
+  function viderAttente() {
+    if (!ctx || ctx.state !== 'running' || !attente.length) return;
+    var liste = attente; attente = [];
+    var maintenant = Date.now();
+    liste.forEach(function (e) {
+      if (!muetEtat && maintenant - e.quand <= ATTENTE_MAX_MS) lancer(e.nom);
+    });
+  }
+
+  function jouer(nom) {
+    if (muetEtat || !SONS[nom]) return;
+    if (!ctx) deverrouiller();
+    if (!ctx) return;
+    if (ctx.state !== 'running') {
+      for (var i = 0; i < attente.length; i++) if (attente[i].nom === nom) return;
+      if (attente.length < ATTENTE_NB) attente.push({ nom: nom, quand: Date.now() });
+      reprendre();
+      return;
+    }
+    lancer(nom);
+  }
+
+  /* ---- Controle par code, sans oreille ---- */
+  function env(v, t) {             // reproduit exactement enveloppe()
+    var x = t - v.t, fin = v.d - EXTINCTION;
+    if (x < 0 || x > v.d) return 0;
+    if (x <= v.a) return v.g * x / v.a;
+    if (x <= fin) return v.g * Math.pow(0.1, (x - v.a) / (fin - v.a));
+    return v.g * 0.1 * (v.d - x) / EXTINCTION;
+  }
+  function cretePartition(nom) {   // borne haute : toutes les voix en phase, pas de 1 ms
+    var p = SONS[nom], max = 0;
+    for (var t = 0; t <= DUREE_MAX[nom] + 0.001; t += 0.001) {
+      var s = 0;
+      for (var i = 0; i < p.length; i++) s += env(p[i], t);
+      if (s > max) max = s;
+    }
+    return max;
+  }
+  function mesurer() {
+    var m = {};
+    Object.keys(SONS).forEach(function (nom) {
+      var c = cretePartition(nom);
+      m[nom] = {
+        crete: Math.round(c * 1000) / 1000,
+        dBFS_defaut: Math.round(dB(c * VOL_DEFAUT) * 10) / 10,
+        dBFS_max: Math.round(dB(c * VOL_MAX) * 10) / 10
+      };
+    });
+    return m;
+  }
+  function verifier() {
+    var ecarts = [];
+    Object.keys(SONS).forEach(function (nom) {
+      var fondamentales = SONS[nom].filter(function (v) { return v.type === 'osc' && !v.h; });
+      SONS[nom].forEach(function (v, i) {
+        var id = nom + '[' + i + ']';
+        if (v.type === 'osc') {
+          var lo = v.h ? F_MIN : F_MIN, hi = v.h ? H_MAX : F_MAX;
+          [v.f0, v.f1 || v.f0].forEach(function (f) {
+            if (f < lo || f > hi) ecarts.push(id + ' frequence ' + f + ' Hz hors [' + lo + ', ' + hi + ']');
+          });
+          if (v.h) {
+            var porteuse = fondamentales.filter(function (o) { return o.t === v.t && Math.abs(o.f0 * 2 - v.f0) < 1; })[0];
+            if (!porteuse) ecarts.push(id + ' harmonique sans fondamentale');
+            else if (v.g >= porteuse.g) ecarts.push(id + ' harmonique plus forte que sa fondamentale');
+          }
+        } else {
+          [v.fc0, v.fc1].forEach(function (f) {
+            if (f < FC_MIN || f > FC_MAX) ecarts.push(id + ' filtre ' + f + ' Hz hors [' + FC_MIN + ', ' + FC_MAX + ']');
+          });
+        }
+        if (v.a < ATTAQUE_MIN) ecarts.push(id + ' attaque ' + v.a + ' s < 5 ms');
+        if (v.a >= v.d - EXTINCTION) ecarts.push(id + ' attaque trop longue pour la duree');
+        if (v.g > CRETE_MAX) ecarts.push(id + ' crete ' + v.g + ' > 0,5');
+        if (v.t + v.d > DUREE_MAX[nom] + 1e-9) ecarts.push(id + ' finit a ' + (v.t + v.d).toFixed(2) + ' s > ' + DUREE_MAX[nom] + ' s');
+      });
+      var c = cretePartition(nom), dDef = dB(c * VOL_DEFAUT), dMax = dB(c * VOL_MAX);
+      if (dDef < DBFS_DEFAUT_MIN || dDef > DBFS_DEFAUT_MAX) ecarts.push(nom + ' crete ' + dDef.toFixed(1) + ' dBFS au volume par defaut, hors [-15, -10]');
+      if (dMax > DBFS_PLAFOND) ecarts.push(nom + ' crete ' + dMax.toFixed(1) + ' dBFS au volume max > -6');
+    });
+    if (VOL_DEFAUT > VOL_MAX) ecarts.push('volume par defaut > plafond');
+    return ecarts; // tableau vide = tous les seuils tenus
+  }
+
+  window.SonsV = {
+    pop: function () { jouer('pop'); },
+    carte: function () { jouer('carte'); },
+    sceau: function () { jouer('sceau'); },
+    paire: function () { jouer('paire'); },
+    etape: function () { jouer('etape'); },
+    victoire: function () { jouer('victoire'); },
+    setVolume: function (v) {
+      volume = borne(Number(v), VOL_DEFAUT);
+      ecrire(CLE_VOL, String(volume));
+      if (maitre && !muetEtat) maitre.gain.setTargetAtTime(volume, ctx.currentTime, 0.02);
+      return volume;
+    },
+    muet: function (oui) {
+      muetEtat = !!oui;
+      ecrire(CLE_MUET, muetEtat ? '1' : '0');
+      if (muetEtat) attente = [];
+      if (maitre) maitre.gain.setTargetAtTime(muetEtat ? 0 : volume, ctx.currentTime, 0.02);
+      return muetEtat;
+    },
+    estMuet: function () { return muetEtat; },
+    verifier: verifier,
+    mesurer: mesurer
+  };
+})();
+
+</script>
+
+<script>
+/* ===================== OUTILS ===================== */
+const app = document.getElementById('app');
+const $ = id => document.getElementById(id);
+/* échappe, et lie au mot voisin (espace insécable) : guillemets, deux-points, ponctuation haute, pour cent, milliers */
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  .replace(/« /g,'« ').replace(/ »/g,' »').replace(/ ([:?!;%])/g,' $1').replace(/(\d) (?=\d{3}(\D|$))/g,'$1 ');
+const ico = (id, cls='') => `<svg viewBox="0 0 64 64" class="${cls}" aria-hidden="true"><use href="#${id}" width="64" height="64"/></svg>`;
+const calme = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function son(nom){ try{ if (window.SonsV && typeof SonsV[nom] === 'function') SonsV[nom]() }catch(e){} }
+/* contour d'un cachet de cire : un cercle aux bords irréguliers */
+function cireD(cx, cy, r){ let d=''; for(let i=0;i<=72;i++){ const t=i/72*2*Math.PI, rr=r*(1+.06*Math.sin(14*t)*(.6+.4*Math.sin(3*t+1)));
+  d+=(i?'L':'M')+(cx+rr*Math.cos(t)).toFixed(1)+' '+(cy+rr*Math.sin(t)).toFixed(1)+' ' } return d+'Z' }
+function hasard(graine){ let s = graine; return () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296 }
+
+/* ===================== TEXTES — recopiés de la trame du 18/11/2026 ===================== */
+/* versets EN ENTIER (partie D), coupés en lignes comme en D2 ; [[ ]] = passage mis en valeur. Aucun mot changé.
+   qui : qui lit ce verset (partie B). */
+const V = {
+  th: { ref:"1 Thessaloniciens 2:13", qui:'vous', t:"« C'est pourquoi aussi nous remercions Dieu constamment,\nparce que, quand vous avez reçu la parole de Dieu que nous vous annoncions,\nvous l'avez acceptée, [[non comme la parole des hommes,]]\n[[mais comme ce qu'elle est réellement :]]\n[[la parole de Dieu]], qui agit bel et bien en vous, les croyants. »" },
+  pi: { ref:"2 Pierre 1:21", qui:'vous', t:"« En effet, la prophétie n'a jamais été apportée\npar la volonté de l'homme,\nmais c'est [[poussés par l'esprit saint]]\nque des hommes [[ont parlé de la part de Dieu]]. »" },
+  tm: { ref:"2 Timothée 3:16", qui:'lui', t:"« [[Toute l'Écriture est inspirée de Dieu]]\net utile pour enseigner,\npour réprimander, pour redresser les choses,\npour former à une conduite juste, »" },
+  re: { ref:"Révélation 14:6", qui:'vous', t:"« Et j'ai vu un autre ange qui volait au milieu du ciel,\net il avait une bonne nouvelle éternelle\nà annoncer aux habitants de la terre,\n[[à toute nation, et tribu, et langue, et peuple]]. »" },
+  is: { ref:"Isaïe 40:8", qui:'lui', t:"« L'herbe se dessèche\net la fleur se fane,\n[[mais la parole de notre Dieu]]\n[[dure éternellement]]. »" },
+  ps: { ref:"Psaume 119:97", qui:'lui', t:"« [[Comme j'aime ta loi !]]\nJe médite sur elle tout au long du jour. »" },
+  ac: { ref:"Actes 10:34, 35", qui:'vous', t:"« Alors Pierre prit la parole. Il dit :\n« À présent, je comprends vraiment\nque [[Dieu n'est pas partial]],\nmais qu'il approuve toute personne\nqui le craint et fait ce qui est juste,\n[[quelle que soit sa nation]]. »" }
+};
+/* texte de la leçon (partie A1), mot pour mot */
+const LECON = {
+  intro:"Jéhovah nous a fait un cadeau merveilleux : 66 livres rassemblés en un seul volume, la Bible.",
+  p1a:"La Bible a été écrite par une quarantaine d'hommes sur une période d'environ 1 600 ans, de 1513 avant notre ère à environ 98 de notre ère. Ces écrivains étaient très différents les uns des autres. Parmi eux, il y avait des bergers, des pêcheurs et des rois. Mais ils ne se contredisent pas.",
+  p1b:"Comment est-ce possible ? Parce que Dieu est l'Auteur de la Bible (lire 1 Thessaloniciens 2:13). Les écrivains n'ont pas écrit leurs pensées, ils « ont parlé de la part de Dieu » parce qu'ils étaient « poussés par l'esprit saint » (2 Pierre 1:21).",
+  p1c:"Dieu s'est servi de son esprit saint pour inspirer des hommes, c'est-à-dire pour les pousser à écrire ses pensées.",
+  p2:"Des gens de « toute nation, et tribu, et langue, et peuple » peuvent connaître la bonne nouvelle dont parle la Bible (lire Révélation 14:6). Dieu a veillé à ce que la Bible soit disponible dans plus de langues qu'aucun autre livre. Presque tout le monde peut lire la Bible, peu importe où il vit ou la langue qu'il parle.",
+  p3:"La Bible a été écrite sur des matériaux qui s'abîment, comme le cuir et le papyrus. Mais des hommes qui aimaient la Bible l'ont copiée et recopiée avec beaucoup de soin. Et alors que des gens puissants ont essayé de la faire disparaître, d'autres ont été prêts à risquer leur vie pour la sauvegarder. Jéhovah n'a laissé rien ni personne la faire disparaître. La Bible dit : « La parole de notre Dieu dure éternellement » (Isaïe 40:8).",
+  p5:"Si Dieu est vraiment l'Auteur de la Bible, on peut s'attendre à ce qu'il la protège. Tout au long de l'Histoire, des hommes puissants ont essayé de détruire la Bible. Même des chefs religieux ont essayé d'empêcher les gens de la lire. Mais malgré l'opposition et les menaces de mort, nombreux sont ceux qui ont risqué leur vie pour protéger la Bible.",
+  legende:"Un secrétaire écrit une lettre, mais le message vient de son responsable. De même, des hommes ont écrit la Bible, mais le message vient de Dieu.",
+  bref:"La Bible est la Parole de Dieu, et Dieu a veillé à ce que chaque humain puisse la lire."
+};
+const SOURCE = { q1:['p1a'], q4a:['legende'], oep1:['legende'], r1:['p1c'], r2:['bref'], r3:['bref'] };
+/* questions simplifiées et leur aide (partie C) */
+const Q = {
+  q1:["La Bible : des hommes l'ont écrite. Pourquoi dit-on que Dieu est son Auteur ?", "D'après 2 Pierre 1:21, qu'est-ce qui poussait ces hommes ?"],
+  q2:["Qui peut lire la Bible ?", "Quelqu'un est-il oublié, d'après le verset ?"],
+  q3:["De quoi Jéhovah a-t-il protégé la Bible ?", "Regarde tes deux tiroirs DANGER."],
+  q4a:["Des hommes l'ont écrite. Pourquoi est-ce quand même la Parole de Dieu ?", "Dans la dictée, qui a écrit ? Et le message, il venait de qui ?"],
+  q4b:["Tu trouves logique que Dieu donne ses pensées à des humains ?", "Si moi j'ai pu te dicter une phrase, est-ce difficile pour Dieu ?"],
+  q5a:["Des gens ont risqué leur vie pour la Bible. Ça te donne envie ?", "Pourquoi ?"],
+  q5b:["Pourquoi ont-ils risqué leur vie pour la Bible ?", "Relis le début du verset."],
+  q6a:["Pourquoi Dieu veut-il la Bible dans toutes les langues ?", "D'après le verset, Dieu préfère-t-il certaines personnes ?"],
+  q6b:["Qu'est-ce qui t'impressionne le plus dans la Bible ?", "Regarde les trois cartes."],
+  oep1:["« Juste un vieux livre écrit par des humains. » Tu en penses quoi ?", "Qui a écrit, et d'où vient le message ?"],
+  oep2:["Quels faits montrent que la Bible vient de Dieu ?", "Touche tes sceaux : chacun est un fait."],
+  r1:["« Dieu a inspiré des hommes. » Ça veut dire quoi ?", "Pense à la dictée."],
+  r2:["Qu'est-ce qui te touche le plus aujourd'hui ?", null],
+  r3:["Dieu a tout fait pour te parler. Qu'est-ce que tu ressens ?", "Il aurait pu ne rien dire."],
+  sec:["La dernière fois, tu as emporté une mission : la Bible, des hommes l'ont écrite. Pourquoi dit-on que Dieu est son Auteur ? Qu'est-ce que tu as trouvé ?", "Alors devine. Qui, d'après toi, a vraiment écrit ce Livre ?"]
+};
+const COEUR = {
+  h0:"Aujourd'hui, on ouvre un cadeau qui t'est adressé.",
+  h1:"Dieu voulait te parler, alors il a fait écrire ses pensées.",
+  h2:"Ce qu'il te dit ne disparaîtra jamais.",
+  h3:"Chaque page vient de lui, comme une lettre qu'il t'adresse.",
+  h4:"Ils l'aimaient tant qu'ils ont tout risqué pour que tu puisses la lire.",
+  h5:"Il parle ta langue, parce qu'il ne préfère personne."
+};
+const PHR = { oep:{ hud:"On entend parfois", t:"Certains disent : la Bible, c'est juste un vieux livre écrit par des humains." } };
+const ROUL = [ { l:"un berger", p:'p-baton', c:'#4F6B35', da:'' }, { l:"un pêcheur", p:'p-filet', c:'#2F5F86', da:'6 3' }, { l:"un roi", p:'p-couronne', c:'#7A2E52', da:'2 2' } ];
+const ROUL_LIGNE = "environ 1 600 ans entre le premier et le dernier";
+const ROUL_FIN = "Ils ne se contredisent pas.";
+const TIR = {
+  d:[ { t:"« La Bible a été écrite sur des matériaux qui s'abîment, comme le cuir et le papyrus. »", p:'t-feuille' },
+      { t:"« des gens puissants ont essayé de la faire disparaître »", p:'t-main' } ],
+  p:[ { t:"« des hommes qui aimaient la Bible l'ont copiée et recopiée avec beaucoup de soin. »", p:'t-plume', img:'175' },
+      { t:"« d'autres ont été prêts à risquer leur vie pour la sauvegarder. »", p:'t-bouclier' } ]
+};
+const MAINS = ["un copiste", "un traducteur", "des lecteurs d'aujourd'hui", "toi"];
+const RELAIS_FIN = "Et maintenant, elle est entre tes mains.";
+const NB = [
+  { n:"100 %", t:"Presque [[100 %]] de la population mondiale peut lire la Bible dans une langue qu'elle comprend.", p:'n-globe' },
+  { n:"3 000", t:"Disponible en plus de [[3 000]] langues en entier ou en partie.", p:'n-bulles' },
+  { n:"5 000 000 000", t:"On estime qu'environ [[5 000 000 000]] d'exemplaires ont été produits. C'est beaucoup plus que pour tout autre livre.", p:'n-pile' }
+];
+/* un fait par sceau, recopié de la leçon (§ 1, 3, 4, 5) */
+const FAITS = [ "« Mais ils ne se contredisent pas. »", "« Jéhovah n'a laissé rien ni personne la faire disparaître. »",
+  "« des hommes ont écrit la Bible, mais le message vient de Dieu. »", "« nombreux sont ceux qui ont risqué leur vie pour protéger la Bible. »" ];
+const OBJECTIF = "Commencer à lire la Bible régulièrement en utilisant la page « Pour prendre goût à la lecture de la Bible ».";
+const RECITS = [ "Noé et le Déluge : Genèse 6:9 – 9:19", "Moïse et la traversée de la mer Rouge : Exode 13:17 – 14:31", "Ruth et Noémi : Ruth chapitres 1-4",
+  "David et Goliath : 1 Samuel chapitre 17", "Abigaïl : 1 Samuel 25:2-35", "Daniel dans la fosse aux lions : Daniel chapitre 6", "Élisabeth et Marie : Luc chapitres 1-2" ];
+const M6 = ["Mission 6 : comment la vie est-elle apparue ?", "Comment l'univers est-il apparu ?"];
+const VID = { v248:{ titre:"Qui est l'Auteur de la Bible ? (extrait)", d:"2:48" }, v617:{ titre:"Ils attachaient de la valeur à la Bible (extrait : William Tyndale)", d:"6:17" } };
+const NIV = { 1:{ nom:'LES PLUMES', ic:'lv1' }, 2:{ nom:'LA VOÛTE', ic:'lv2' }, 3:{ nom:'LA DICTÉE', ic:'lv3' }, 4:{ nom:'LES GARDIENS', ic:'lv4' }, 5:{ nom:'LE MONDE', ic:'lv5' } };
+
+
+
+const IMG = () => '', IMG_NU = () => '';
+const LIVRE = `<p class="livre">${ico('i-livre')}Regarde l'image de la leçon 5 dans ton livre.</p>`;
+const pres = () => '';
+const SUM_ATT = '', SUMV = () => '';
+const LIVRE_Q = {}, LIVRE_QM = {}, ATT = {}, NOTE_Q = {}, NOTE_V = {}, FOND = {};
+const AIDE_BTN = 'Un indice ?';
+const AIDE_PRE = 'Indice : ';
+const CLE = 'archive-66-famille-v1', CLE_THEME = 'archive66.famille.theme';
+function majFin(){}
+
+
+/* ===================== ÉTAT ===================== */
+function melange(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a }
+const neuf = () => ({ ecran:'accueil', badge:false, nom:'', secret:'', scelle:false, pos:0, faites:[], st:[false,false,false,false,false], vues:[],
+  et:{1:0,2:0,3:0,4:0,5:0}, roul:[false,false,false], tir:{ d:melange([0,1]), p:melange([0,1]), ok:[] }, fleur:false,
+  dict:{ mode:'clavier', txt:'', img:'', fait:false, q1:false, q2:false }, pliOuvert:false, verdict:null, vid4:null, rel:0,
+  nb:[false,false,false], vol:false, recit:null, m6:0, alt:{}, boite:[] });
+let S;
+try{ S = Object.assign(neuf(), JSON.parse(localStorage.getItem(CLE)) || {}) }catch(e){ S = neuf() }
+function save(){ try{ localStorage.setItem(CLE, JSON.stringify(S)) }catch(e){} }
+
+/* ===================== DÉCOR : deux rayonnages dans la pénombre, posés une fois ===================== */
+(function(){
+  const r = hasard(20261118);
+  const rayon = () => { let h = '', y = 0; while (y < 1000){ let x = 4; const H = 60 + Math.floor(r()*30);
+      while (x < 50){ const w = 4 + r()*5, bh = H - 10 - r()*22; h += `<rect x="${x.toFixed(1)}" y="${(y+H-6-bh).toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" rx="1"/>`; x += w + 1.2 }
+      h += `<rect x="0" y="${y+H-6}" width="54" height="5"/>`; y += H }
+    return h };
+  $('rayonG').innerHTML = rayon(); $('rayonD').innerHTML = rayon();
+})();
+/* l'archive dessinée, pour la version sans image */
+function archiveDessin(){
+  const r = hasard(66), livres = y => { let h = '', x = 16; while (x < 304){ const w = 6 + r()*7, bh = 26 + r()*16;
+    h += `<rect x="${x.toFixed(1)}" y="${(y-bh).toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5" fill="${['#7A3B2E','#2F4A6B','#5B6B3A','#8A6A2F','#4E3A5E','#9A5A2A'][Math.floor(r()*6)]}"/>`; x += w + 1.5 } return h };
+  return `<svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <rect width="320" height="180" fill="#2B1E16"/>
+    <ellipse cx="160" cy="40" rx="150" ry="70" fill="#F3C56E" opacity=".14"/>
+    ${livres(78)}<rect x="10" y="78" width="300" height="5" fill="#6A4F39"/>
+    ${livres(128)}<rect x="10" y="128" width="300" height="5" fill="#6A4F39"/>
+    ${livres(176)}<rect x="10" y="176" width="300" height="5" fill="#6A4F39"/>
+    <use href="#i-lampe" x="138" y="2" width="44" height="44"/></svg>`;
+}
+
+/* ===================== VIE ET MOUVEMENT ===================== */
+document.addEventListener('pointerdown', ev => {
+  const b = ev.target.closest('button'); if (!b || b.disabled) return;
+  const objet = b.classList.contains('flip') || b.classList.contains('tiroir') || b.classList.contains('main-b');
+  if (!objet) son('pop');
+  b.classList.remove('rebond'); void b.offsetWidth; b.classList.add('rebond');
+  b.addEventListener('animationend', () => b.classList.remove('rebond'), { once:true });
+  if (calme() || objet) return;
+  if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
+  b.style.overflow = 'hidden';
+  const r = b.getBoundingClientRect(), h = document.createElement('span');
+  h.className = 'halo-t'; h.style.left = (ev.clientX - r.left) + 'px'; h.style.top = (ev.clientY - r.top) + 'px';
+  b.appendChild(h); setTimeout(() => h.remove(), 750);
+}, { passive:true });
+function celebrer(el, n=14, verte=false){
+  if (!el || calme()) return;
+  const r = el.getBoundingClientRect();
+  for (let i=0; i<n; i++){
+    const p = document.createElement('span');
+    p.className = 'particule' + (verte ? ' verte' : '');
+    p.style.left = (r.left + window.scrollX + r.width*(.15 + Math.random()*.7)) + 'px';
+    p.style.top = (r.top + window.scrollY + r.height*(.3 + Math.random()*.5)) + 'px';
+    p.style.setProperty('--dx', (Math.random()*120 - 60).toFixed(0) + 'px');
+    p.style.setProperty('--dy', (-50 - Math.random()*90).toFixed(0) + 'px');
+    p.style.animationDelay = (Math.random()*.3).toFixed(2) + 's';
+    document.body.appendChild(p); setTimeout(() => p.remove(), 1600);
+  }
+}
+function briller(el){ if (!el) return; el.classList.remove('brille'); void el.offsetWidth; el.classList.add('brille'); setTimeout(() => el.classList.remove('brille'), 1100) }
+
+/* ===================== NAVIGATION ===================== */
+function majMini(){
+  $('miniNom').innerHTML = S.nom ? '<span class="cdt">Archiviste </span>' + esc(S.nom) : 'Archiviste';
+  document.body.classList.toggle('allume', S.badge);
+}
+function aller(e){ son('etape'); S.ecran = e; save(); render(); window.scrollTo(0,0) }
+function render(){
+  $('miniBadge').classList.toggle('on', S.badge);
+  majMini(); majFin();
+  const e = S.ecran;
+  if (e==='accueil') return rAccueil();
+  if (e==='badge') return rBadge();
+  if (e==='secret') return rSecret();
+  if (e==='intro') return rIntro();
+  if (e==='coeur0') return rCoeur0();
+  if (e==='plateau') return rPlateau();
+  if (e.startsWith('niv')) return rNiv(+e.slice(3));
+}
+
+function rAccueil(){
+  app.innerHTML = `<section class="screen centre">
+    <h1 class="titre">Archive 66</h1>
+    <p class="sous">Un Livre fait de 66 livres.</p>
+    <div class="arche">${archiveDessin()}</div>
+    <p class="plaque">Qui l'a vraiment écrit ?</p>
+    <button class="big" id="entrer">Entrer${ico('i-fleche')}</button>
+    
+  </section>`;
+  $('entrer').onclick = () => aller('badge');
+  
+}
+
+function badgeHTML(){
+  return `<div class="badge" id="badge"><div class="b-ent">Archive 66 · Carte d'archiviste</div>
+      <div class="b-corps"><svg class="b-av" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-avatar" width="64" height="64"/></svg>
+        <div style="min-width:0"><p class="b-lig">Nom d'archiviste</p><p class="b-val" id="valNom">${esc(S.nom || '— — —')}</p>
+        ${S.recit !== null ? `<p class="b-recit">${esc('Mon récit : ' + RECITS[S.recit].split(' : ')[0])}</p>` : ''}</div></div>
+      <div class="tampon ${S.badge?'on':''}" id="tampon">Archiviste à l'entrée</div></div>`;
+}
+/* la carte d'archiviste en bandeau, pour l'écran des récits */
+function carteMini(){
+  return `<div class="carte-mini" id="badge"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#i-avatar" width="64" height="64"/></svg>
+    <div style="min-width:0"><p class="cm-nom">${esc(S.nom || "Carte d'archiviste")}</p>
+    ${S.recit !== null ? `<p class="cm-rc">${esc('Mon récit : ' + RECITS[S.recit].split(' : ')[0])}</p>` : ''}</div></div>`;
+}
+function rBadge(){
+  app.innerHTML = `<section class="screen centre">
+    ${badgeHTML()}
+    <div class="panneau" id="saisie" style="max-width:520px" ${S.badge?'hidden':''}>
+      <p class="hud" style="text-align:left;margin-bottom:14px">Choisis ton nom d'archiviste</p>
+      <input class="champ" id="champNom" type="text" maxlength="18" autocomplete="off" spellcheck="false" aria-label="Nom d'archiviste" value="${esc(S.nom)}">
+      <div class="row" style="margin-top:16px;justify-content:flex-start"><button class="btn" id="valider">Valider</button></div>
+    </div>
+    <p class="hud" id="lampes" ${S.badge?'':'hidden'}>Les lampes s'allument.</p>
+    <button class="big" id="suite" ${S.badge?'':'hidden'}>Suite${ico('i-fleche')}</button>
+  </section>`;
+  $('champNom').oninput = e => { $('valNom').textContent = e.target.value.trim() || '— — —' };
+  $('valider').onclick = () => {
+    S.nom = $('champNom').value.trim(); S.badge = true; save(); document.activeElement.blur();
+    $('saisie').hidden = true; $('tampon').classList.add('on'); briller($('badge')); son('sceau');
+    majMini(); $('miniBadge').classList.add('on');
+    setTimeout(()=>{ celebrer($('tampon'), 12); $('lampes').hidden = false; $('suite').hidden = false }, calme()?0:900);
+  };
+  $('suite').onclick = () => aller('secret');
+}
+
+function aideHTML(r){ return r ? `<button class="aide-btn" data-aide>${AIDE_BTN}</button><p class="aide" hidden>${esc(AIDE_PRE + r)}</p>` : '' }
+function brancherAide(root=document){ root.querySelectorAll('[data-aide]').forEach(b => b.onclick = () => { b.nextElementSibling.hidden = false; b.hidden = true }) }
+
+/* le pli scellé : une feuille pliée, un cachet de cire rouge qui se brise en deux */
+function pliSVG(id='pli'){
+  const sceau = `<path d="${cireD(100,64,20)}" fill="url(#g-cire-rouge)" stroke="#5E1612" stroke-width="1.5"/>
+    <circle cx="100" cy="64" r="12" fill="none" stroke="#E7A49B" stroke-width="1.4" opacity=".7"/><path d="M93 64 L100 57 L107 64 L100 71 Z" fill="#E7A49B" opacity=".8"/>`;
+  return `<svg class="pli-svg" id="${id}" viewBox="0 0 200 130" aria-label="Pli scellé">
+    <defs><clipPath id="clipG"><rect x="0" y="0" width="100" height="130"/></clipPath><clipPath id="clipD"><rect x="100" y="0" width="100" height="130"/></clipPath></defs>
+    <path d="M20 20 H180 V110 H20 Z" fill="#F4E6C8" stroke="#8A6A45" stroke-width="2"/>
+    <path d="M20 50 H180 M20 80 H180" stroke="#C9B08A" stroke-width="1.5"/><path d="M20 20 L100 62 L180 20" fill="none" stroke="#C9B08A" stroke-width="1.5"/>
+    <g class="sc-r"><g class="m-g" clip-path="url(#clipG)">${sceau}</g><g class="m-d" clip-path="url(#clipD)">${sceau}</g></g></svg>`;
+}
+function rSecret(){
+  app.innerHTML = `<section class="screen scene">
+    <div class="haut"><p class="hud">Pli scellé</p></div>
+    <div class="milieu" id="pliZone">
+      ${S.scelle ? `${pliSVG()}<p class="cachet">${ico('i-cachet')}S'ouvre dans la salle 3</p>`
+      : `<div class="panneau"><p class="question">${esc(Q.sec[0])}</p>${aideHTML(Q.sec[1])}</div>
+        <textarea class="champ" id="champSecret" spellcheck="false" aria-label="Ta réponse">${esc(S.secret)}</textarea>
+        <button class="big cire" id="sceller">Sceller</button>`}
+    </div>
+    <div class="bas"><button class="btn leger" id="prec">${ico('i-retour')}Retour</button>
+      <button class="big" id="suite" ${S.scelle?'':'hidden'}>Suite${ico('i-fleche')}</button></div>
+    
+  </section>`;
+  brancherAide();
+  $('prec').onclick = () => aller('badge');
+  $('suite').onclick = () => aller('intro');
+  const c = $('sceller');
+  if (c) c.onclick = () => {
+    const v = $('champSecret').value.trim(); if (!v){ $('champSecret').focus(); return }
+    S.secret = v; S.scelle = true; save(); document.activeElement.blur();
+    const z = $('pliZone');
+    z.innerHTML = `<div class="lire feuille" id="feuille"><p class="frag">${esc(v)}</p></div>`;
+    setTimeout(()=>{ $('feuille').classList.add('plie') }, calme()?0:700);
+    setTimeout(()=>{ z.innerHTML = `${pliSVG()}<p class="cachet" id="cachet" hidden>${ico('i-cachet')}S'ouvre dans la salle 3</p>`;
+      document.querySelector('#pli .sc-r').classList.add('pose'); son('sceau');
+      setTimeout(()=>{ $('cachet').hidden = false; $('suite').hidden = false }, calme()?0:800) }, calme()?0:1300);
+  };
+  const a = $('ajL4');
+  if (a) a.onclick = () => { const t = $('champL4'), v = t.value.trim(); if (!v) return; S.boite.push({ c:'L4', q:v }); save(); t.value = '';
+    $('listeL4').insertAdjacentHTML('beforeend', `<li>${esc(v)}</li>`) };
+}
+
+const leconHTML = keys => `<p class="hud">La leçon</p><div class="panneau lecon">${keys.map(k => `<p>${esc(LECON[k])}</p>`).join('')}</div>`;
+function rIntro(){
+  app.innerHTML = `<section class="screen scene"><div class="haut"><p class="hud">Archiviste à l'entrée</p></div>
+    <div class="milieu">${leconHTML(['intro'])}</div>
+    <div class="bas"><button class="btn leger" id="prec">${ico('i-retour')}Retour</button><button class="big" id="suite">Suite${ico('i-fleche')}</button></div>
+    </section>`;
+  $('prec').onclick = () => aller('secret'); $('suite').onclick = () => aller('coeur0');
+}
+function coeurHTML(k){ return `${ico('i-coeur','coeur')}<div class="panneau" style="text-align:center"><p class="phrase" style="font-size:clamp(24px,4vw,32px)">${esc(COEUR[k])}</p></div>` }
+function rCoeur0(){
+  app.innerHTML = `<section class="screen scene"><div class="haut"><p class="hud">Archiviste à l'entrée</p></div>
+    <div class="milieu">${coeurHTML('h0')}</div>
+    <div class="bas"><button class="btn leger" id="prec">${ico('i-retour')}Retour</button><button class="big" id="suite">Le plan de l'archive${ico('i-fleche')}</button></div>
+    </section>`;
+  $('prec').onclick = () => aller('intro'); $('suite').onclick = () => aller('plateau');
+}
+
+/* ===================== LE PLAN DE L'ARCHIVE : une coupe, cinq salles qui descendent, le couloir, l'étagère au fond ===================== */
+const SAL = { 1:[80,112], 2:[220,197], 3:[80,282], 4:[220,367], 5:[80,452] };
+const PT = n => n === 0 ? [150,64] : [SAL[n][0], SAL[n][1]+22];
+const LEGS = { 1:"M150 64 C 150 100, 112 134, 80 134", 2:"M80 134 C 160 134, 140 219, 220 219", 3:"M220 219 C 140 219, 160 304, 80 304",
+  4:"M80 304 C 160 304, 140 389, 220 389", 5:"M220 389 C 140 389, 160 474, 80 474" };
+function etagereFond(){
+  const r = hasard(5066), coul = ['#7A3B2E','#2F4A6B','#5B6B3A','#8A6A2F','#4E3A5E','#9A5A2A','#3D5B5B']; let h = '', x = 24;
+  for (let i=0; i<66; i++){ const w = 3.82, bh = 26 + r()*16; h += `<rect x="${x.toFixed(2)}" y="${(556-bh).toFixed(1)}" width="${(w-.7).toFixed(2)}" height="${bh.toFixed(1)}" rx=".8" fill="${coul[Math.floor(r()*7)]}"/>`; x += w }
+  return h;
+}
+function rPlateau(){
+  const salle = n => { const [cx,cy] = SAL[n], x = cx-60, y = cy-38, vue = n <= S.pos, gauche = cx < 150, lx = gauche ? 156 : 144;
+    return `<g class="salle">
+      <path class="mur" d="M${x} ${y+76} V${y+22} A60 22 0 0 1 ${x+120} ${y+22} V${y+76} Z" style="fill:${vue?'url(#g-salle)':'var(--salle-off)'};stroke:${vue?'#8A5E12':'var(--salle-offb)'}" stroke-width="2"/>
+      <g class="lampe-l" style="opacity:${vue?1:.35}"><use href="#i-lampe" x="${cx-15}" y="${y+6}" width="30" height="30"/></g>
+      ${S.st[n-1] ? `<path d="${cireD(x+100, y+50, 12)}" fill="url(#g-cire-or)" stroke="#8A5E12" stroke-width="1.2"/><text x="${x+100}" y="${y+55}" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-weight="700" fill="#5A3A08">${n}</text>` : ''}
+      <text x="${lx}" y="${cy-4}" text-anchor="${gauche?'start':'end'}" font-family="Verdana, sans-serif" font-size="12" style="fill:var(--txt2)">Salle ${n}</text>
+      <text x="${lx}" y="${cy+15}" text-anchor="${gauche?'start':'end'}" font-family="Georgia, serif" font-size="15" font-weight="700" letter-spacing=".5" style="fill:var(--txt)">${NIV[n].nom}</text>
+      ${n===3 && S.scelle && !S.pliOuvert ? `<use href="#i-cachet" x="${lx}" y="${cy+21}" width="22" height="22"/><text x="${lx+26}" y="${cy+37}" font-family="Verdana, sans-serif" font-size="12" style="fill:var(--cire-t)">Pli scellé</text>` : ''}
+    </g>` };
+  const [px,py] = PT(S.pos), toutes = Object.values(LEGS).join(' ');
+  app.innerHTML = `<section class="screen plateau">
+    <div class="board"><svg viewBox="0 0 300 584" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Plan de l'archive : 5 salles">
+      <path d="M8 40 H292" style="stroke:var(--salle-offb)" stroke-width="2"/>
+      <path d="M138 64 V36 A12 10 0 0 1 162 36 V64 Z" fill="#6B4A2E" stroke="#C9A86A" stroke-width="2"/>
+      <text x="172" y="30" font-family="Verdana, sans-serif" font-size="12" style="fill:var(--txt2)">Entrée</text>
+      <path d="${toutes}" fill="none" style="stroke:var(--couloir)" stroke-width="12" stroke-linecap="round"/>
+      ${S.pos>0 ? `<path d="${Object.entries(LEGS).filter(([n])=>+n<=S.pos).map(([,d])=>d).join(' ')}" fill="none" stroke="#E0B356" stroke-width="5" stroke-linecap="round"/>` : ''}
+      ${Object.entries(LEGS).map(([n,d])=>`<path id="leg${n}" d="${d}" fill="none" stroke="none"/>`).join('')}
+      ${[1,2,3,4,5].map(salle).join('')}
+      <g style="opacity:${S.vol?1:.45}">${etagereFond()}<rect x="18" y="556" width="264" height="6" rx="2" style="fill:var(--etag)"/></g>
+      <text x="150" y="578" text-anchor="middle" font-family="Verdana, sans-serif" font-size="12" style="fill:var(--txt2)">66 livres</text>
+      <g id="pion" transform="translate(${px} ${py})"><use href="#i-lampe" x="-14" y="-24" width="28" height="28"/></g>
+    </svg></div>
+    <div class="side">
+      ${S.pos<5 ? `<button class="big" id="suivant">Salle suivante${ico('i-fleche')}</button>` : `<button class="big or" id="rouvrir">Revoir la salle 5</button>`}
+      ${S.pos>0 && S.pos<5 ? `<button class="btn" id="revoir">Revoir la salle ${S.pos}</button>` : ''}
+      <p class="etat">${S.pos===0 ? 'Entrée · 5 salles' : S.pos<5 ? `Salle ${S.pos}/5 · encore ${5-S.pos}` : (S.faites.includes(5) ? 'Archive complète' : 'Salle 5/5')}</p>
+      ${S.scelle && !S.pliOuvert ? `<p class="cachet">${ico('i-cachet')}Pli scellé · s'ouvre dans la salle 3</p>` : ''}
+    </div></section>`;
+  const b = $('suivant'); if (b) b.onclick = () => { b.disabled = true; avancer() };
+  const r = $('rouvrir'); if (r) r.onclick = () => { if (S.faites.includes(5)) S.et[5] = 0; aller('niv5') };
+  const v = $('revoir'); if (v) v.onclick = () => { S.et[S.pos] = 0; aller('niv'+S.pos) };
+  S.st.forEach((o,i) => { if (o && !(S.vues||[])[i]){ const g = document.querySelectorAll('.salle')[i]; setTimeout(()=>{ celebrer(g, 10); son('sceau') }, 500) } });
+  S.vues = S.st.slice(); save();
+}
+function avancer(){
+  const a = S.pos+1, leg = $('leg'+a), pion = $('pion'), L = leg.getTotalLength(), D = calme() ? 1 : 1000;
+  const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2, t0 = performance.now();
+  function pas(now){
+    const t = Math.min(1,(now-t0)/D), p = leg.getPointAtLength(ease(t)*L);
+    pion.setAttribute('transform', `translate(${p.x} ${p.y})`);
+    if (t<1) requestAnimationFrame(pas);
+    else { S.pos = a; S.et[a] = 0; save(); setTimeout(()=>aller('niv'+a), calme()?0:400) }
+  }
+  requestAnimationFrame(pas);
+}
+
+/* ===================== SALLES : une suite d'écrans, une chose à lire par écran ===================== */
+function etapes(n){
+  switch(n){
+    case 1: return [{t:'titre'},{t:'lecon',k:'p1a'},{t:'rouleaux'},{t:'q',k:'q1'},{t:'lecon',k:'p1b'},{t:'v',k:'th'},{t:'v',k:'pi'},{t:'lecon',k:'p1c'},{t:'sceau'},{t:'coeur',k:'h1'},{t:'tour'},{t:'fin'}];
+    case 2: return [{t:'titre'},{t:'lecon',k:'p2'},{t:'v',k:'re'},{t:'q',k:'q2'},{t:'lecon',k:'p3'},{t:'tiroirs'},{t:'q',k:'q3'},{t:'fleur'},{t:'sceau'},{t:'coeur',k:'h2'},{t:'tour'},{t:'fin'}];
+    case 3: return [{t:'titre'},{t:'video',k:'v248'},{t:'dictee'},{t:'secretaire'},{t:'v',k:'tm'},{t:'q',k:'q4a'},{t:'q',k:'q4b'},{t:'pli'},{t:'sceau'},{t:'coeur',k:'h3'},{t:'tour'},{t:'fin',phrase:'Encore deux salles.'}];
+    case 4: return [{t:'titre'},{t:'vid4'},{t:'lecon',k:'p5'},{t:'q',k:'q5a'},{t:'v',k:'ps'},{t:'q',k:'q5b'},{t:'relais'},{t:'sceau'},{t:'coeur',k:'h4'},{t:'tour'},{t:'fin'}];
+    case 5: return [{t:'titre'},{t:'nombres'},{t:'v',k:'ac'},{t:'q',k:'q6a'},{t:'q',k:'q6b'},{t:'phrase',k:'oep'},{t:'q',k:'oep2',alt:['oep2','oep1']},
+      {t:'volume'},{t:'q',k:'r1',alt:['r1','r2','r3'],hud:'Une question de révision'},{t:'objectif'},{t:'recits'},{t:'m6'},{t:'boite'},{t:'coeur',k:'h5'},{t:'fin'}];
+  }
+}
+let N = 1, I = 0;
+function rNiv(n){
+  N = n; const L = etapes(n); I = Math.max(0, Math.min(S.et[n]||0, L.length-1)); const e = L[I];
+  const R = RENDU[e.t](n, e);
+  app.innerHTML = `<section class="screen scene">
+    <div class="haut"><p class="hud">Salle ${n}/5 · ${NIV[n].nom}</p><div class="pas" aria-hidden="true">${L.map((_,j)=>`<i class="${j<I?'fait':j===I?'ici':''}"></i>`).join('')}</div></div>
+    <div class="milieu ${R.large?'large':''}">${R.html}</div>
+    <div class="bas"><button class="btn leger" id="prec">${ico('i-retour')}${I>0?'Retour':'Plan de l\'archive'}</button>
+      
+      ${e.t==='fin' ? '' : `<button class="big" id="suite" ${R.pret===false?'hidden':''}>Suite${ico('i-fleche')}</button>`}</div>
+    ${R.att ? pres(R.att, SUM_ATT) : ''}${pres(R.pres, R.sum)}
+  </section>`;
+  brancherAide();
+  $('prec').onclick = () => { if (I>0){ S.et[n] = I-1; aller('niv'+n) } else aller('plateau') };
+  const s = $('suite'); if (s) s.onclick = () => { S.et[n] = I+1; aller('niv'+n) };
+  const p = $('passer'); if (p) p.onclick = () => { S.et[n] = I+1; aller('niv'+n) };
+  R.after && R.after();
+}
+function pret(){ const s = $('suite'); if (s) s.hidden = false; const p = $('passer'); if (p) p.hidden = true }
+
+/* le verset EN ENTIER, les passages de la partie D2 mis en valeur */
+const versetTexte = k => esc(V[k].t).replace(/\[\[/g,'<mark>').replace(/\]\]/g,'</mark>').replace(/\n/g,'<br>');
+const versetPlein = k => V[k].t.replace(/\[\[|\]\]/g,'').replace(/\n/g,' ');
+const versetHTML = (k, id='') => `<p class="hud">Dans la Bible</p><div class="lire" ${id?`id="${id}"`:''}><p class="ref">${esc(V[k].ref)}</p><p class="frag">${versetTexte(k)}</p></div>`;
+const presVerset = k => '';
+
+function sceauSVG(n, on, cls='g-sceau', id='gSceau'){
+  return `<svg class="${cls}" id="${id}" viewBox="0 0 120 120" aria-label="Sceau ${n}">
+    ${on ? '<circle cx="60" cy="60" r="58" fill="url(#g-halo)"/>' : ''}
+    <path d="${cireD(60,62,44)}" style="fill:${on?'url(#g-cire-or)':'var(--salle-off)'};stroke:${on?'#8A5E12':'var(--salle-offb)'}" stroke-width="2" ${on?'':'stroke-dasharray="5 4"'}/>
+    <circle cx="60" cy="62" r="31" fill="none" style="stroke:${on?'#9C6B16':'var(--salle-offb)'}" stroke-width="2" opacity=".8"/>
+    <text x="60" y="75" text-anchor="middle" font-family="Georgia, serif" font-size="36" font-weight="700" style="fill:${on?'#5A3A08':'var(--txt2)'}">${n}</text></svg>`;
+}
+
+const RENDU = {
+  titre(n){
+    const img = { 1:'168', 2:'170', 4:'172' }[n];
+    const html =  `<div class="niche">${ico(NIV[n].ic,'pic')}</div><p class="nom-niv">${NIV[n].nom}</p>`;
+    return { html, pres: '' };
+  },
+  v(n, e){ return { html: versetHTML(e.k), pres: presVerset(e.k), sum: SUMV(e.k) } },
+  lecon(n, e){ return { html: leconHTML([e.k]), pres: '' } },
+  q(n, e){
+    const liste = e.alt || [e.k]; const k = liste[(S.alt[n+'-'+I] || 0) % liste.length], q = Q[k];
+    const src = SOURCE[k] || [];
+    let extra = '';
+    if (k==='q6b') extra = `<div class="chips">${NB.map(c=>`<span>${esc(c.n)}</span>`).join('')}</div>`;
+    if (k==='oep2') extra = `<div class="sceaux" id="sceaux">${[1,2,3,4].map(i=>`<button data-s="${i}" aria-label="Sceau ${i}" ${S.st[i-1]?'':'disabled'}>${sceauSVG(i, S.st[i-1], '', 'sc'+i)}</button>`).join('')}</div><div id="fait" style="width:100%"></div>`;
+    const html = `${k==='q2' ? IMG('166','haute') : ''}${src.length ? leconHTML(src) : ''}<p class="hud">${e.hud || (k.startsWith('oep') ? 'On entend parfois' : 'La question')}</p>
+      <div class="panneau"><p class="question">${esc(q[0])}</p>${aideHTML(q[1])}</div>${extra}
+      ${liste.length>1 ? `<button class="btn" id="autreQ">Une autre question</button>` : ''}`;
+    return { html, att: ATT[k], pres: '',
+      after: () => {
+        const b = $('autreQ'); if (b) b.onclick = () => { S.alt[n+'-'+I] = ((S.alt[n+'-'+I] || 0) + 1) % liste.length; save(); rNiv(n) };
+        document.querySelectorAll('[data-s]').forEach(bt => bt.onclick = () => { const i = +bt.dataset.s;
+          document.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === bt)); son('carte');
+          $('fait').innerHTML = `<div class="lire"><p class="ref">Sceau ${i}</p><p class="frag">${esc(FAITS[i-1])}</p></div>` });
+      } };
+  },
+  phrase(n, e){ const p = PHR[e.k];
+    return { html: `<p class="hud">${esc(p.hud)}</p><div class="panneau"><p class="phrase">${esc(p.t)}</p></div>`,
+      pres: '' } },
+  video(n, e){ const d = VID[e.k];
+    return { html: `${IMG('158','vignette')}<div class="panneau video">${ico('i-video')}<div style="min-width:0">
+        
+        <p class="vt">Vidéo · ${d.d} · son bas</p><p class="phrase" style="font-size:22px">Regarde « ${esc(d.titre)} » dans JW Library.</p></div></div>`,
+      pres: '' } },
+  rouleaux(){
+    const fini = S.roul.every(Boolean);
+    return { pret: fini, large: true,
+      html: `<p class="hud" id="rlEtat">${fini ? 'Rouleaux ouverts' : 'Touche chaque rouleau.'}</p>
+        <div class="rouleaux">${ROUL.map((r,i)=>`<button class="flip rouleau ${S.roul[i]?'ouverte':''}" data-r="${i}" aria-label="Rouleau : ${esc(r.l)}"><div class="in">
+          <div class="f dos">${ico(r.p)}<p class="lab">${esc(r.l)}</p>
+            <svg class="ecr" viewBox="0 0 100 24" aria-hidden="true"><path d="M4 6 q8 -5 16 0 t16 0 t16 0 t16 0 t16 0 M4 16 q8 -5 16 0 t16 0 t16 0 t12 0" fill="none" stroke="${r.c}" stroke-width="2.2" stroke-linecap="round" ${r.da?`stroke-dasharray="${r.da}"`:''}/></svg></div>
+          <div class="f face">${ico('i-sceau-auteur')}<p class="lab">${esc(r.l)}</p></div></div></button>`).join('')}</div>
+        <p class="ligne-r">${esc(ROUL_LIGNE)}</p>
+        <div class="panneau" id="rlFin" style="text-align:center" ${fini?'':'hidden'}><p class="phrase">${esc(ROUL_FIN)}</p></div>`,
+      pres: '',
+      after: () => document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => {
+        const i = +b.dataset.r; if (S.roul[i]) return; S.roul[i] = true; save(); b.classList.add('ouverte'); son('carte');
+        $('rlEtat').textContent = 'Rouleau ouvert';
+        setTimeout(()=>{ celebrer(b, 8); if (S.roul.every(Boolean)){ son('paire'); $('rlEtat').textContent = 'Rouleaux ouverts'; $('rlFin').hidden = false; pret() } }, calme()?0:900);
+      }) };
+  },
+  tiroirs(){
+    const fini = S.tir.ok.length === 2;
+    const tiroir = (g, i) => { const d = TIR[g][i], ok = S.tir.ok.includes(i);
+      return `<button class="tiroir ${ok?'ouvert ok':''}" data-g="${g}" data-i="${i}" aria-label="Tiroir ${g==='d'?'DANGER':'PROTECTION'}">
+        <span class="front"><span class="pic">${ico(d.p)}</span><span class="t-nom">${g==='d'?'DANGER':'PROTECTION'}</span><span class="poignee"></span></span>
+        <span class="contenu"><div><p class="texte">${d.img ? IMG_NU(d.img) : ''}${esc(d.t)}</p></div></span></button>` };
+    return { pret: fini, large: true,
+      html: `<p class="hud" id="tiEtat">${fini ? 'Les quatre tiroirs sont ouverts.' : 'Ouvre un tiroir DANGER.'}</p>
+        <div class="voute"><div class="col">${S.tir.d.map(i=>tiroir('d',i)).join('')}</div>
+        <div class="col">${S.tir.p.map(i=>tiroir('p',i)).join('')}</div></div>`,
+      pres: '',
+      after: brancherTiroirs };
+  },
+  fleur(){
+    const on = S.fleur;
+    return { pret: on,
+      html: `<p class="hud">Dans la Bible</p><div class="fleur-z"><div class="lire" id="isV"><p class="ref">${esc(V.is.ref)}</p><p class="frag">${versetTexte('is')}</p></div>
+        <button class="fleur-b" id="fleurB" aria-label="La fleur"><svg class="fleur ${on?'fane':''}" id="fleur" viewBox="0 0 100 150" aria-hidden="true">
+          <path d="M14 147 H86" style="stroke:var(--salle-offb)" stroke-width="3" stroke-linecap="round"/>
+          <g class="tige"><path d="M50 146 C 48 120, 52 95, 50 64" stroke="#5E8C4A" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <path d="M50 118 C 36 112, 30 100, 32 92 C 42 96, 48 106, 50 118 Z" fill="#7DAA62"/>
+            <g>${[0,60,120,180,240,300].map(a=>{ const t=a*Math.PI/180; return `<circle class="p" cx="${(50+12*Math.cos(t)).toFixed(1)}" cy="${(52+12*Math.sin(t)).toFixed(1)}" r="10" fill="#E79AB0"/>` }).join('')}
+            <circle cx="50" cy="52" r="8" fill="#F2C65A"/></g></g></svg><span id="fleurAide" ${on?'hidden':''}>Touche la fleur</span></button></div>`,
+      pres: presVerset('is'), sum: SUMV('is'),
+      after: () => { if (on) $('isV').classList.add('dure');
+        $('fleurB').onclick = () => { if (S.fleur) return; S.fleur = true; save(); $('fleur').classList.add('fane'); $('fleurAide').hidden = true; son('carte');
+          setTimeout(()=>{ $('isV').classList.add('dure'); son('paire'); celebrer($('isV'), 10); pret() }, calme()?0:1000) } } };
+  },
+  dictee(){
+    const d = S.dict;
+    if (!d.fait) return { pret: false,
+      html: `<p class="hud">La dictée</p>
+        <div class="panneau"><p class="phrase" style="margin-bottom:16px">Écris la phrase que l'on te dicte.</p>
+          <div class="modes"><button class="btn ${d.mode==='clavier'?'on':''}" id="mClav">Au clavier</button><button class="btn ${d.mode==='doigt'?'on':''}" id="mDoigt">Au doigt</button></div>
+          <div style="margin-top:14px" id="zoneD">${d.mode==='doigt'
+            ? `<canvas class="dessin" id="dessin" aria-label="Écris avec le doigt"></canvas><div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn leger" id="effacer">Effacer</button></div>`
+            : `<textarea class="champ" id="champD" spellcheck="false" autocorrect="off" autocapitalize="sentences" autocomplete="off" enterkeyhint="done" aria-label="La phrase dictée" style="font-size:24px">${esc(d.txt)}</textarea>`}</div>
+          <div class="row" style="justify-content:flex-start;margin-top:14px"><button class="big or" id="ecrit">C'est écrit</button></div></div>`,
+      pres: '',
+      after: brancherDictee };
+    const choix = (q, bon) => `<div class="row"><button class="btn ${d[q] && bon==='moi'?'on':''}" data-q="${q}" data-v="moi">Moi</button><button class="btn ${d[q] && bon==='toi'?'on':''}" data-q="${q}" data-v="toi">Toi</button></div>`;
+    return { pret: d.q1 && d.q2,
+      html: `<p class="hud">La dictée</p>
+        <div class="lettre">${d.img ? `<img src="${d.img}" alt="La phrase écrite au doigt">` : esc(d.txt)}</div>
+        <div class="qd"><p class="question" style="text-align:center">Qui l'a écrite ?</p>${choix('q1','moi')}</div>
+        <div class="qd" id="qd2" ${d.q1?'':'hidden'}><p class="question" style="text-align:center">De qui vient le message ?</p>${choix('q2','toi')}</div>
+        <button class="btn leger" id="reecrire">Réécrire</button>`,
+      pres: '',
+      after: () => {
+        document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => {
+          const q = b.dataset.q, bon = q==='q1' ? 'moi' : 'toi'; if (b.dataset.v !== bon || S.dict[q]) return;
+          S.dict[q] = true; save(); b.classList.add('on'); son('paire'); celebrer(b, 8, true);
+          if (q==='q1') $('qd2').hidden = false; else pret() });
+        $('reecrire').onclick = () => { S.dict = { mode:S.dict.mode, txt:S.dict.txt, img:'', fait:false, q1:false, q2:false }; save(); rNiv(N) };
+      } };
+  },
+  secretaire(){
+    return { html: `${IMG('161','haute')}<svg class="secr" viewBox="0 0 220 130" aria-hidden="true">
+        <path d="M14 18 H96 Q104 18 104 26 V58 Q104 66 96 66 H52 L36 80 V66 H22 Q14 66 14 58 V26 Q14 18 22 18 Z" fill="#F1D08A" stroke="#6E4E14" stroke-width="2.4"/>
+        <path d="M28 34 H90 M28 46 H76" stroke="#6E4E14" stroke-width="3" stroke-linecap="round"/>
+        <path d="M108 46 Q124 46 132 56" fill="none" stroke="#C9A86A" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>
+        <rect x="128" y="40" width="72" height="84" rx="4" fill="#FBF1DA" stroke="#4E341F" stroke-width="2.4"/>
+        <path d="M140 58 H188 M140 70 H188 M140 82 H176" stroke="#1E2F57" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M206 64 L182 100 L178 106 L180 99 L203 62 Z" fill="#F1C66A" stroke="#4E341F" stroke-width="2"/></svg>
+        <div class="lire"><p class="frag">${esc(LECON.legende)}</p></div>${LIVRE}`,
+      pres: '' };
+  },
+  pli(){
+    if (!S.scelle) return { html: `<div class="panneau"><p class="phrase">Pas de pli scellé cette fois.</p></div>` };
+    const o = S.pliOuvert, msg = S.verdict==='oui' ? 'Sceau confirmé' : S.verdict==='auj' ? "Maintenant, tu l'as trouvé toi-même." : 'Tu avais trouvé ?';
+    return { pret: !!S.verdict,
+      html: `<p class="hud" id="plEtat" style="color:var(--cire-t)">${o ? 'Pli ouvert' : 'Pli scellé'}</p>
+        <div id="plZone" style="width:100%;display:flex;justify-content:center">${o ? `<div class="lire feuille" style="animation:none"><p class="frag">${esc(S.secret)}</p></div>` : pliSVG()}</div>
+        <button class="big or" id="ouvrirPli" ${o?'hidden':''}>Ouvrir le pli scellé</button>
+        <div id="plQ" ${o?'':'hidden'} style="width:100%;display:flex;flex-direction:column;align-items:center;gap:16px">
+          <p class="hud" id="plMsg" style="font-size:22px;color:var(--vert-t)">${msg}</p>
+          <div class="row"><button class="btn ${S.verdict==='oui'?'on':''}" id="vOui">Sceau confirmé ✔</button><button class="btn ${S.verdict==='auj'?'on':''}" id="vAuj">Trouvé aujourd'hui ✔</button></div></div>`,
+      pres: '',
+      after: () => {
+        const b = $('ouvrirPli');
+        b.onclick = () => { b.hidden = true; $('pli').classList.add('brise'); son('carte');
+          setTimeout(()=>{ $('plZone').innerHTML = `<div class="lire feuille"><p class="frag">${esc(S.secret)}</p></div>`; S.pliOuvert = true; save();
+            $('plEtat').textContent = 'Pli ouvert'; son('paire'); $('plQ').hidden = false }, calme()?0:750) };
+        const choix = (v, m) => { S.verdict = v; save(); $('plMsg').textContent = m; $('vOui').classList.toggle('on', v==='oui'); $('vAuj').classList.toggle('on', v==='auj');
+          celebrer($('plZone'), 12, true); pret() };
+        $('vOui').onclick = () => choix('oui', 'Sceau confirmé');
+        $('vAuj').onclick = () => choix('auj', "Maintenant, tu l'as trouvé toi-même.");
+      } };
+  },
+  vid4(){
+    const d = VID.v617;
+    return { pret: !!S.vid4,
+      html: `${S.vid4==='oui' ? IMG('163','mini') : ''}<div class="panneau video">${ico('i-video')}<div style="min-width:0"><p class="vt">Vidéo · ${d.d}</p>
+        <p class="phrase" style="font-size:22px">As-tu regardé « ${esc(d.titre)} » ?</p></div></div>
+        <div class="row"><button class="btn ${S.vid4==='oui'?'on':''}" id="v4oui">Oui</button><button class="btn ${S.vid4==='non'?'on':''}" id="v4non">Non</button></div>`,
+      pres: '',
+      after: () => { const ch = v => { S.vid4 = v; save(); rNiv(N) };
+        $('v4oui').onclick = () => ch('oui'); $('v4non').onclick = () => ch('non') } };
+  },
+  relais(){
+    const k = S.rel, fini = k >= 3;
+    return { pret: fini,
+      html: `<p class="hud" id="relEtat">${fini ? 'Le relais' : 'Touche la main suivante.'}</p>
+        <div class="frise">${MAINS.map((m,i)=>`<button class="main-b ${i===k+1?'suivante':''} ${i===3?'toi':''}" data-m="${i}" aria-label="${esc(m)}">
+          <span class="porte" id="porte${i}">${i===k ? `<svg id="livreR" viewBox="0 0 48 40" aria-hidden="true"><use href="#i-petit-livre" width="48" height="40"/></svg>` : ''}</span>
+          <svg class="main-svg" viewBox="0 0 80 80" aria-hidden="true"><use href="#i-main" width="80" height="80"/></svg><span class="m-lab">${esc(m)}</span></button>`).join('')}</div>
+        <div class="panneau" id="relFin" style="text-align:center" ${fini?'':'hidden'}><p class="phrase">${esc(RELAIS_FIN)}</p></div>`,
+      pres: '',
+      after: () => document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+        const i = +b.dataset.m; if (i !== S.rel + 1) return;
+        const livre = $('livreR'), r0 = livre.getBoundingClientRect(), cible = $('porte'+i);
+        cible.appendChild(livre); const r1 = livre.getBoundingClientRect();
+        livre.style.transition = 'none'; livre.style.transform = `translate(${r0.left-r1.left}px,${r0.top-r1.top}px)`; void livre.offsetWidth;
+        livre.style.transition = 'transform .9s cubic-bezier(.4,0,.2,1)'; livre.style.transform = '';
+        S.rel = i; save(); son('carte');
+        document.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('suivante', +x.dataset.m === i+1));
+        if (i === 3) setTimeout(()=>{ $('relFin').hidden = false; $('relEtat').textContent = 'Le relais'; son('paire'); celebrer(b, 14); pret() }, calme()?0:950);
+      }) };
+  },
+  nombres(){
+    const fini = S.nb.every(Boolean);
+    return { pret: fini, large: true,
+      html: `<p class="hud" id="nbEtat">${fini ? 'Trois nombres' : 'Retourne les trois cartes.'}</p>
+        <div class="nombres">${NB.map((c,i)=>`<button class="flip nb ${S.nb[i]?'ouverte':''}" data-n="${i}" aria-label="Carte ${i+1}"><div class="in">
+          <div class="f dos">${ico(c.p)}<span class="k">${i+1}</span></div>
+          <div class="f face">${ico(c.p)}<p class="gros">${esc(c.n)}</p><p class="t">${esc(c.t).replace(/\[\[/g,'<strong>').replace(/\]\]/g,'</strong>')}</p></div></div></button>`).join('')}</div>`,
+      pres: '',
+      after: () => document.querySelectorAll('[data-n]').forEach(b => b.onclick = () => {
+        const i = +b.dataset.n; if (S.nb[i]) return; S.nb[i] = true; save(); b.classList.add('ouverte'); son('carte');
+        setTimeout(()=>{ celebrer(b, 8); if (S.nb.every(Boolean)){ $('nbEtat').textContent = 'Trois nombres'; pret() } }, calme()?0:900);
+      }) };
+  },
+  volume(){
+    const on = S.vol, r = hasard(1102021205), coul = ['#7A3B2E','#2F4A6B','#5B6B3A','#8A6A2F','#4E3A5E','#9A5A2A','#3D5B5B'];
+    let livres = '', x = 16;
+    for (let i=0; i<66; i++){ const w = 4.9, h = 56 + r()*44; const dx = (180 - (x + w/2)).toFixed(1);
+      livres += `<rect class="lv" x="${x.toFixed(1)}" y="${(138-h).toFixed(1)}" width="${(w-.8).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${coul[Math.floor(r()*7)]}" style="--dx:${dx}px;transition-delay:${(Math.abs(+dx)/164*.2).toFixed(2)}s"/>`; x += w }
+    return { pret: on,
+      html: `<p class="hud" id="volEtat">${on ? 'Un seul Livre' : '66 livres'}</p>
+        <div class="etagere"><svg class="vol ${on?'on deja':''}" id="vol" viewBox="0 0 360 160" aria-label="Les 66 livres deviennent un seul Livre">
+          <g>${livres}</g><rect x="8" y="138" width="344" height="7" rx="2" fill="#8A6A45"/>
+          <g class="grand"><rect x="146" y="50" width="68" height="86" rx="5" fill="url(#g-cuir)" stroke="#3E140F" stroke-width="2"/>
+            <path d="M154 50 V136" stroke="#3E140F" stroke-width="2"/><path d="M166 76 H204 M166 86 H198" stroke="#F1D08A" stroke-width="3" stroke-linecap="round"/></g>
+          <g class="ouvert"><path d="M180 26 V18 M156 30 L150 22 M204 30 L210 22 M136 40 L128 34 M224 40 L232 34" stroke="#F3C56E" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M100 136 V52 Q140 40 180 56 Q220 40 260 52 V136 Q220 124 180 138 Q140 124 100 136 Z" fill="#FBF3E2" stroke="#6E4E14" stroke-width="2.4" stroke-linejoin="round"/>
+            <path d="M180 56 V138" stroke="#6E4E14" stroke-width="2"/>
+            <path d="M112 70 H166 M112 82 H166 M112 94 H160 M112 106 H166 M194 70 H248 M194 82 H248 M194 94 H242 M194 106 H248" stroke="#C9B08A" stroke-width="2.2" stroke-linecap="round"/></g>
+        </svg></div>
+        <div class="lire" id="bref" ${on?'':'hidden'}><p class="ref">En bref</p><p class="frag">${esc(LECON.bref)}</p></div>
+        <button class="big or" id="rassembler" ${on?'hidden':''}>Rassembler les 66 livres</button>`,
+      pres: '',
+      after: () => { const b = $('rassembler'); b.onclick = () => { b.hidden = true; $('vol').classList.add('on'); S.vol = true; S.st[4] = true; save(); son('victoire');
+        setTimeout(()=>{ $('volEtat').textContent = 'Un seul Livre'; $('bref').hidden = false; celebrer($('vol'), 22); pret() }, calme()?0:2400) } } };
+  },
+  objectif(){
+    return { html: `${IMG('156','bus')}<p class="hud">Mon objectif</p><div class="panneau lecon"><p>${esc(OBJECTIF)}</p></div>`,
+      pres: '' };
+  },
+  recits(){
+    return { html: `<p class="hud">Choisis ton récit</p>
+        <div class="recits">${RECITS.map((r,i)=>{ const [a,b] = r.split(' : '); return `<button class="btn ${S.recit===i?'on':''}" data-rc="${i}">${esc(a)}<small>${esc(b)}</small></button>` }).join('')}</div>
+        <div id="carteRc" style="width:100%;display:flex;justify-content:center" ${S.recit===null?'hidden':''}>${S.recit===null ? '' : carteMini()}</div>`,
+      pres: '',
+      after: () => document.querySelectorAll('[data-rc]').forEach(b => b.onclick = () => {
+        S.recit = +b.dataset.rc; save(); document.querySelectorAll('[data-rc]').forEach(x => x.classList.toggle('on', x === b)); son('paire');
+        const c = $('carteRc'); c.innerHTML = carteMini(); c.hidden = false; briller($('badge'));
+      }) };
+  },
+  m6(){
+    const etat = S.m6;
+    return { pret: etat >= 2,
+      html: `<p class="hud">Mission 6</p>
+        <button class="env-b" id="env" aria-label="Ouvrir l'enveloppe Mission 6"><svg class="env ${etat?'ouverte':''}" id="envS" viewBox="0 0 120 84" aria-hidden="true">
+          <g class="lettre-e"><rect x="18" y="14" width="84" height="56" rx="3" fill="#FBF3E2" stroke="#4E341F" stroke-width="1.6"/><path d="M28 26 H92 M28 34 H92 M28 42 H76" stroke="#B89C72" stroke-width="2" stroke-linecap="round"/></g>
+          <path d="M8 30 V80 H112 V30 L60 58 Z" fill="#E9D4A8" stroke="#6E4E14" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M8 80 L52 50 M112 80 L68 50" stroke="#C9A86A" stroke-width="1.6"/>
+          <g class="rabat"><path d="M8 30 H112 L60 60 Z" fill="#DCC290" stroke="#6E4E14" stroke-width="2" stroke-linejoin="round" transform="translate(0 -12)"/></g>
+          <g class="sc-e"><path d="${cireD(60,46,11)}" fill="url(#g-cire-rouge)" stroke="#5E1612" stroke-width="1.2"/>
+            <path d="M55 49 C 55 44 59 41 62 41 C 62 45 59 49 55 49 Z" fill="#F0B8B0"/><path d="M64 44 l1 2 2.2.2-1.6 1.4.5 2.2-2.1-1.2-2.1 1.2.5-2.2-1.6-1.4 2.2-.2Z" fill="#F7D9A0"/></g></svg></button>
+        <p class="hud" id="envAide" ${etat?'hidden':''}>Touche l'enveloppe</p>
+        <div class="panneau lecon" id="m6txt" ${etat?'':'hidden'}><p id="m6p">${esc(M6[Math.max(0, etat-1)])}</p></div>
+        <button class="btn" id="m6suite" ${etat===1?'':'hidden'}>La suite</button>`,
+      pres: '',
+      after: () => {
+        $('env').onclick = () => { if (S.m6) return; S.m6 = 1; save(); son('carte'); $('envS').classList.add('ouverte'); $('envAide').hidden = true;
+          setTimeout(()=>{ $('m6txt').hidden = false; $('m6p').textContent = M6[0]; $('m6suite').hidden = false; celebrer($('env'), 12) }, calme()?0:1000) };
+        $('m6suite').onclick = () => { S.m6 = 2; save(); $('m6p').textContent = M6[1]; $('m6suite').hidden = true; pret() };
+      } };
+  },
+  sceau(n){
+    const on = S.st[n-1];
+    return { pret: on,
+      html: `${sceauSVG(n, on)}<p class="hud" id="scLab" ${on?'':'hidden'} style="color:var(--or-t)">Sceau posé</p>
+        <button class="big or" id="poser" ${on?'hidden':''}>Poser le sceau ${n}</button>`,
+      after: () => { $('poser').onclick = () => { S.st[n-1] = true; save(); $('poser').hidden = true;
+        $('gSceau').outerHTML = sceauSVG(n, true); $('gSceau').classList.add('pose'); son('sceau');
+        setTimeout(()=>{ celebrer($('gSceau'), 16) }, calme()?0:500); $('scLab').hidden = false; pret() } } };
+  },
+  coeur(n, e){ return { html: coeurHTML(e.k), pres: '' } },
+  tour(n){
+    const mes = S.boite.filter(x => x.c === n);
+    return { html: `<p class="hud">Tour de l'archiviste</p>${ico('i-boite','coeur')}
+        <div class="panneau"><p class="phrase" style="margin-bottom:16px">Une question ? Range-la dans ta boîte.</p>
+        <textarea class="champ" id="tq" spellcheck="false" aria-label="Ta question"></textarea>
+        <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn" id="ranger">Ranger dans la boîte</button></div>
+        <ul class="liste" id="tl">${mes.map(x=>`<li>${esc(x.q)}</li>`).join('')}</ul></div>`,
+      pres: '',
+      after: () => { $('ranger').onclick = () => { const t = $('tq'), v = t.value.trim(); if (!v) return; S.boite.push({ c:n, q:v }); save(); t.value = '';
+        $('tl').insertAdjacentHTML('beforeend', `<li>${esc(v)}</li>`) } } };
+  },
+  boite(){
+    return { html: `<p class="hud">Ta boîte à enquêtes</p>${ico('i-boite','coeur')}
+        <div class="panneau">${S.boite.length ? `<ul class="liste" style="margin-top:0" id="tl">${S.boite.map(x=>`<li>${esc(x.q)}</li>`).join('')}</ul>` : `<p class="phrase petite" id="vide">Ta boîte est vide pour l'instant.</p><ul class="liste" id="tl"></ul>`}
+        <textarea class="champ" id="tq" style="margin-top:16px" spellcheck="false" aria-label="Ajoute une question"></textarea>
+        <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn" id="ranger">Ranger dans la boîte</button></div></div>`,
+      pres: '',
+      after: () => { $('ranger').onclick = () => { const t = $('tq'), v = t.value.trim(); if (!v) return; S.boite.push({ c:5, q:v }); save(); t.value = '';
+        const vd = $('vide'); if (vd) vd.remove(); $('tl').insertAdjacentHTML('beforeend', `<li>${esc(v)}</li>`) } } };
+  },
+  fin(n, e){
+    return { html: `${sceauSVG(n, S.st[n-1])}${n===5 ? `<p class="hud" style="color:var(--or-t)">Archive complète</p>` : ''}${e.phrase ? `<div class="panneau" style="text-align:center"><p class="phrase">${esc(e.phrase)}</p></div>` : ''}
+        <button class="big" id="retour">${n===5 ? 'Revoir l\'archive' : 'Retour au plan'}${ico('i-fleche')}</button>`,
+      after: () => { $('retour').onclick = () => { if (!S.faites.includes(n)) S.faites.push(n); aller('plateau') } } };
+  }
+};
+
+/* ----- la voûte : un tiroir DANGER, puis le tiroir PROTECTION qui lui répond ----- */
+let selD = null, tiOccupe = false;
+function brancherTiroirs(){
+  selD = null; tiOccupe = false;
+  const tir = (g, i) => document.querySelector(`.tiroir[data-g="${g}"][data-i="${i}"]`);
+  document.querySelectorAll('.tiroir').forEach(b => b.onclick = () => {
+    const g = b.dataset.g, i = +b.dataset.i; if (tiOccupe || S.tir.ok.includes(i)) return;
+    if (g === 'd'){
+      if (selD !== null && selD !== i) tir('d', selD).classList.remove('ouvert');
+      selD = i; b.classList.add('ouvert'); son('carte'); $('tiEtat').textContent = 'Trouve le tiroir PROTECTION qui lui répond.';
+      return;
+    }
+    if (selD === null){ $('tiEtat').textContent = 'Ouvre d\'abord un tiroir DANGER.'; return }
+    tiOccupe = true; b.classList.add('ouvert'); son('carte'); const d = selD;
+    if (i === d){
+      setTimeout(()=>{ S.tir.ok.push(i); save(); b.classList.add('ok'); tir('d', d).classList.add('ok'); son('paire');
+        celebrer(b, 8, true); selD = null; tiOccupe = false;
+        $('tiEtat').textContent = S.tir.ok.length === 2 ? 'Les quatre tiroirs sont ouverts.' : 'Ouvre l\'autre tiroir DANGER.';
+        if (S.tir.ok.length === 2) pret() }, calme()?0:800);
+    } else {
+      /* paire fausse : les deux tiroirs se referment doucement, sans marque d'erreur */
+      setTimeout(()=>{ b.classList.remove('ouvert'); tir('d', d).classList.remove('ouvert'); selD = null; tiOccupe = false;
+        $('tiEtat').textContent = 'Ouvre un tiroir DANGER.' }, calme()?600:2600);
+    }
+  });
+}
+
+/* ----- la dictée : au clavier, ou au doigt ----- */
+function brancherDictee(){
+  
+  $('mClav').onclick = () => { S.dict.mode = 'clavier'; save(); rNiv(N) };
+  $('mDoigt').onclick = () => { const t = $('champD'); if (t) S.dict.txt = t.value; S.dict.mode = 'doigt'; save(); rNiv(N) };
+  const t = $('champD'); if (t) t.oninput = () => { S.dict.txt = t.value; save() };
+  let trace = false;
+  const cv = $('dessin');
+  if (cv){
+    /* taille de mise en page (offsetWidth), insensible à l'animation d'entrée de l'écran */
+    const k = window.devicePixelRatio || 1, r = { width:cv.offsetWidth, height:cv.offsetHeight };
+    cv.width = Math.round(r.width * k); cv.height = Math.round(r.height * k);
+    const c = cv.getContext('2d'); c.scale(k, k); c.lineWidth = 4; c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = '#1E2F57';
+    c.fillStyle = '#FBF3E2'; c.fillRect(0, 0, r.width, r.height);
+    let bas = false;
+    const pt = ev => { const b = cv.getBoundingClientRect(); return [ev.clientX - b.left, ev.clientY - b.top] };
+    cv.onpointerdown = ev => { bas = true; cv.setPointerCapture(ev.pointerId); const [x,y] = pt(ev); c.beginPath(); c.moveTo(x,y); c.lineTo(x+.1,y+.1); c.stroke(); trace = true };
+    cv.onpointermove = ev => { if (!bas) return; const [x,y] = pt(ev); c.lineTo(x,y); c.stroke() };
+    cv.onpointerup = cv.onpointercancel = () => { bas = false };
+    $('effacer').onclick = () => { c.fillRect(0, 0, r.width, r.height); trace = false };
+  }
+  $('ecrit').onclick = () => {
+    if (S.dict.mode === 'doigt'){ if (!trace) return; S.dict.img = cv.toDataURL('image/png') }
+    else { const v = ($('champD').value || '').trim(); if (!v){ $('champD').focus(); return } S.dict.txt = v; S.dict.img = '' }
+    document.activeElement.blur(); S.dict.fait = true; save(); son('sceau'); rNiv(N);
+  };
+}
+
+/* ===================== THÈME, SON, RECOMMENCER ===================== */
+const IC_LUNE = '<path d="M15.5 3.5 A8.5 8.5 0 1 0 20.5 15 A7 7 0 0 1 15.5 3.5 Z" fill="currentColor"/>';
+const IC_SOLEIL = '<circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+function appliquerTheme(t){
+  document.documentElement.dataset.theme = t;
+  $('icTheme').innerHTML = t === 'sombre' ? IC_SOLEIL : IC_LUNE;
+  $('btnTheme').setAttribute('aria-label', t === 'sombre' ? 'Passer en thème clair' : 'Passer en thème sombre');
+}
+let theme = 'sombre'; try{ theme = localStorage.getItem(CLE_THEME) || 'sombre' }catch(e){}
+appliquerTheme(theme);
+$('btnTheme').onclick = () => { theme = theme === 'sombre' ? 'clair' : 'sombre'; try{ localStorage.setItem(CLE_THEME, theme) }catch(e){}; appliquerTheme(theme); if (S.ecran === 'plateau') rPlateau() };
+function majHP(){
+  const m = window.SonsV ? SonsV.estMuet() : true;
+  $('hpOn').style.display = m ? 'none' : ''; $('hpOff').style.display = m ? '' : 'none';
+  $('btnHP').setAttribute('aria-label', m ? 'Son coupé' : 'Son activé');
+}
+$('btnHP').onclick = () => { if (window.SonsV) SonsV.muet(!SonsV.estMuet()); majHP() };
+majHP();
+$('btnReset').onclick = () => $('confirm').hidden = false;
+$('nonReset').onclick = () => $('confirm').hidden = true;
+$('ouiReset').onclick = () => { S = neuf(); save(); $('confirm').hidden = true; render(); window.scrollTo(0,0) };
+
+render();
+</script>
+</body>
+</html>
